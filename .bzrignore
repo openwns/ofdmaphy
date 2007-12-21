@@ -7,3 +7,4 @@ config/private.py
 config/pushMailRecipients.py
 .sconsign.dblite
 addOn
+doxydoc
