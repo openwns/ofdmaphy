@@ -1,0 +1,9 @@
+.arch-ids
+{arch}
+build
+include
+config/bversion.hpp
+config/private.py
+config/pushMailRecipients.py
+.sconsign.dblite
+addOn

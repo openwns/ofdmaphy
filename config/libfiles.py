@@ -1,0 +1,2 @@
+srcFiles = dict()
+Return('srcFiles')
