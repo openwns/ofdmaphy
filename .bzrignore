@@ -8,3 +8,4 @@ config/pushMailRecipients.py
 .sconsign.dblite
 addOn
 doxydoc
+.objs
