@@ -1,2 +1,4 @@
 srcFiles = dict()
-Return('srcFiles')
+hppFiles = []
+pyconfigs = []
+Return('srcFiles hppFiles pyconfigs')
