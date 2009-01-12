@@ -25,26 +25,14 @@
 #
 ###############################################################################
 
-from wns.Sealed import Sealed
 from rise.Scenario import Scenario
 from rise.Mobility import No
 
-class EventList(Sealed):
-    UseEventList = None
-    eventList = None
-    def __init__(self):
-        self.UseEventList = False
-        self.eventList = "sgoose_input/sgoose"
-
-
-class System(Sealed):
+class System(object):
     Scenario = None
-    EventList = None
     name = None
 
     def __init__(self):
-        "foo"
-	self.EventList = EventList()
         self.name = "OFDMA"
 
 class DropIn(System):
