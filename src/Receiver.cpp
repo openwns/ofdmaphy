@@ -37,6 +37,8 @@
 #include <RISE/transceiver/transmitter.hpp>
 #include <RISE/transceiver/cache/idvectorcache.hpp>
 
+#include <valarray>
+
 using namespace ofdmaphy;
 
 ReceiverBase::ReceiverBase()
@@ -201,7 +203,7 @@ wns::Ratio FTFadingAspect::getFTFading(wns::node::Interface* source, int _subCar
 	assure(myFTFading!=NULL,"myFTFading==NULL");
 	wns::Ratio _currentFadingLevel = myFTFading->getFTFading(_subCarrier);
 	// positive value = constructive; negative value = destructive
-  	return _currentFadingLevel;
+	return _currentFadingLevel;
 }
 
 // constructor
@@ -323,9 +325,8 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 	LossCalculation(config),
 	//logger(config.getView("logger")),
 	station(s),
-	propagationCache(new rise::IdVectorCache(this))
-	//doMeasurementUpdates(false)
-	//doMeasurementUpdates(config.get<bool>("doMeasurementUpdates")),
+	propagationCache(new rise::IdVectorCache(this)),
+	wraparoundShiftVectors(NULL)
 {
 	this->startObserving(s);
 
@@ -342,6 +343,17 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 		MESSAGE_SINGLE(NORMAL, logger, "doMeasurementUpdates in intervals of "<<getMeasurementUpdateInterval()<<"s, offset="<<getMeasurementUpdateOffset());
 		startRegularMeasurementUpdates();
 	}
+	// TODO: handle wraparaoundShifts
+	wraparoundShiftVectors = s->getSystemManager()->getWraparoundShiftVectors();
+	// doWraparound = (wraparoundShiftVectors->size()>0) ? true:false;
+	MESSAGE_SINGLE(NORMAL, logger, "wraparound: using "<<wraparoundShiftVectors->size()<<" ShiftVectors");
+	// HOWTO use the wraparoundShiftVectors:
+	int shiftListLength = wraparoundShiftVectors->size();
+	for(int i=0; i<shiftListLength; i++) {
+	  wns::geometry::Vector v = (*wraparoundShiftVectors)[i];
+	  const std::valarray<double> va = v.get();
+	  MESSAGE_SINGLE(NORMAL, logger, "wraparoundShiftVectors["<<i<<"]=("<<va[0]<<","<<va[1]<<")");
+	}
 }
 
 Receiver::~Receiver()
@@ -356,9 +368,9 @@ Receiver::~Receiver()
 wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t)
 {
 	wns::Power rxPower = getRxPower(t, getCurrentReceivePattern(t));
- 	MESSAGE_BEGIN(VERBOSE, logger, m , "getRxPower");
- 	    m  << "(from: " << dynamic_cast<Station*>(t->getTransmitter()->getStation())->getNode()->getName() << ") = "<< rxPower;
- 	MESSAGE_END();
+	MESSAGE_BEGIN(VERBOSE, logger, m , "getRxPower");
+	m  << "(from: " << dynamic_cast<Station*>(t->getTransmitter()->getStation())->getNode()->getName() << ") = "<< rxPower;
+	MESSAGE_END();
 	return rxPower;
 }
 
@@ -371,6 +383,9 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
 	//assure(transmitterOFDMAStation != NULL,"Transmitter must have an OFDMAStation"); // new [rs] 24.10.2007
 
 	wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition());
+	// Idea: wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition()->shift(x,y));
+	// Idea: wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition()+wns::PositionOffset(x,y,0));
+	// Idea: instead of (x,y) we could use wns::PositionOffset()
 	MESSAGE_SINGLE(VERBOSE,logger, "  TransmittersAntennaGain: " << transmittersAntennaGain);
 
 	// pure static path loss (from propagationCache):
@@ -390,6 +405,10 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
 		receiverAntennaGain = receiverOFDMAStation->getBFAntenna()->getGain(transmitter->getAntenna()->getPosition(), pattern);
 		MESSAGE_SINGLE(VERBOSE,logger, "  ReceiverAntennaGain of Beamformed Pattern: " << receiverAntennaGain);
 	}
+	// TODO: receiverOFDMAStation->getBFAntenna()->getGain() should deliver the same as
+	// getStation()->getAntenna()->getGain()
+	// try to simplify this please
+	// assure(receiverAntennaGain1 == receiverAntennaGain2,"error")
 	wns::Ratio pathLoss = purePathLoss - transmittersAntennaGain - receiverAntennaGain;
 	// todo: store it in a cache?
 	MESSAGE_SINGLE(VERBOSE,logger, "  getQuasiStaticPathLoss() = " << pathLoss);
@@ -420,7 +439,7 @@ wns::Ratio Receiver::getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::
 wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
 {
 	assure(t, "no existing transmission object");
- 	MESSAGE_BEGIN(VERBOSE, logger, m, "Receiver::getRxPower(User ");
+	MESSAGE_BEGIN(VERBOSE, logger, m, "Receiver::getRxPower(User ");
 	  std::string userName; // only needed if VERBOSE
 	  Station* OFDMAStation = dynamic_cast<Station*>(t->getTransmitter()->getStation());
 	  if (OFDMAStation == NULL)
@@ -428,7 +447,7 @@ wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::servi
 	  else
 		userName = OFDMAStation->getNode()->getName();
 	  m << userName <<"): ";
- 	MESSAGE_END();
+	MESSAGE_END();
 	wns::Power rxPower = t->getTxPower();
 	MESSAGE_SINGLE(VERBOSE,logger, "  TxPower: " << rxPower);
 	wns::Ratio fullPathLoss = getFullPathLoss(t,pattern);
@@ -487,7 +506,7 @@ wns::Power Receiver::getAllRxPower()
 	for(int SubCarrierIndex=0; SubCarrierIndex<getCurrentNumberOfSubCarriers(); ++SubCarrierIndex)
 	{
 		// ...add noise and transmissions
- 		rxPower += getAllRxPower(SubCarrierIndex);
+		rxPower += getAllRxPower(SubCarrierIndex);
 	}
 	return rxPower;
 }
@@ -508,6 +527,7 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
 				//MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Receiver::getInterference(): own transmission");
 				// exclude from addition here, as getRxPower() might be costly.
 			} else {
+			  // this calculation must also be done for all phantom positions of wraparoundShiftVectors:
 				interference += getRxPower(*itr, currentPattern);
 				MESSAGE_BEGIN(VERBOSE, logger, m, "");
 				int32_t stationId = (*itr)->getTransmitter()->getStation()->getStationId();
@@ -515,7 +535,6 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
 				MESSAGE_END();
 			}
 	}
-	//interference -= getRxPower(t, currentPattern);
 
 	MESSAGE_SINGLE(VERBOSE, logger, "------- Finished Interference Calculation, Result: " << interference << " -----------------");
 	return interference;
@@ -567,7 +586,7 @@ Receiver::getCurrentReceivePattern(wns::node::Interface* pStack) const
 
 	if( itr == currentReceivePatterns.end()) {
 		// omni-directional reception performed with static antenna
- 		return  wns::service::phy::ofdma::PatternPtr();
+		return  wns::service::phy::ofdma::PatternPtr();
 	} else {
 		// pattern pointed to the transmitter
 		MESSAGE_SINGLE(VERBOSE, logger, "Found ReceivePattern for node: " << pStack->getName());
@@ -586,11 +605,11 @@ void Receiver::writeCacheEntry(rise::PropCacheEntry& cacheEntry, rise::Transmitt
 
 	cacheEntry.setPathloss(pl);
 	cacheEntry.setShadowing(sh);
-  	// receive antenna gain at transmitter's position
-  	//wns::Ratio r1 = rxAntenna.getGain(txAntenna.getPosition(), NULL);
-  	// transmit antenna gain at receiver's position
-  	//wns::Ratio r2 = txAntenna.getGain(rxAntenna.getPosition(), NULL);
-  	cacheEntry.setAntennaGain(wns::Ratio::from_dB(0));
+	// receive antenna gain at transmitter's position
+	//wns::Ratio r1 = rxAntenna.getGain(txAntenna.getPosition(), NULL);
+	// transmit antenna gain at receiver's position
+	//wns::Ratio r2 = txAntenna.getGain(rxAntenna.getPosition(), NULL);
+	cacheEntry.setAntennaGain(wns::Ratio::from_dB(0));
 	cacheEntry.setValid(true);
 }
 

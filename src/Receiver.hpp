@@ -40,6 +40,7 @@
 #include <RISE/receiver/PowerMeasurement.hpp>
 #include <WNS/events/CanTimeout.hpp>
 #include <WNS/PowerRatio.hpp>
+#include <WNS/geometry/Vector.hpp>
 #include <WNS/logger/Logger.hpp>
 #include <WNS/pyconfig/View.hpp>
 #include <map>
@@ -284,6 +285,8 @@ namespace ofdmaphy {
 		std::list<rise::TransmissionObjectPtr> activeTransmissions;
 
 		wns::Power receivedSignalStrength;
+
+	        const rise::SystemManager::WraparoundShiftVectorContainer* wraparoundShiftVectors;
 	};
 }
 

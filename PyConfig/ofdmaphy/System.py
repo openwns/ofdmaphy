@@ -27,12 +27,16 @@
 
 from rise.Scenario import Scenario
 from rise.Mobility import No
+import rise.System
 
-class System(object):
-    Scenario = None
+#class System(object):
+class System(rise.System):
+    """ derived from RISE.System """
+    #Scenario = None # already in rise.System
     name = None
 
     def __init__(self):
+       """ TODO: Description """
         self.name = "OFDMA"
 
 class DropIn(System):

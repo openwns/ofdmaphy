@@ -27,12 +27,15 @@
 
 from openwns.module import Module
 from rise.System import System
+from openwns.logger import Logger
 
 class OFDMASystem(System):
+    """ derived from RISE.System """
     name = None # my name must correspond with "name of the rise::SystemManager"
 
-    def __init__(self, name):
+    def __init__(self, name, **kw):
         self.name = name
+        attrsetter(self, kw)
 
 class OFDMAPhy(Module):
     systems = None # will contain a list of OFDMASystem's
