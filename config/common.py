@@ -9,7 +9,7 @@ commonEnv = CNBSEnvironment(PROJNAME       = 'ofdmaphy',
                             FLATINCLUDES   = False,
                             LIBRARY        = True,
                             SHORTCUTS      = True,
-			    REVISIONCONTROL = RCS.Bazaar('../', 'OFDMAPhy', 'unstable', '0.3'),
+                            REVISIONCONTROL = RCS.Bazaar('../', 'OFDMAPhy', 'unstable', '0.3'),
                             )
 
 commonEnv['CXXFLAGS'].remove('-Woverloaded-virtual')
