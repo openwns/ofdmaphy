@@ -26,8 +26,9 @@
 ###############################################################################
 
 from openwns.module import Module
-from rise.System import System
+from openwns.pyconfig import attrsetter
 from openwns.logger import Logger
+from rise.System import System
 
 class OFDMASystem(System):
     """ derived from RISE.System """
