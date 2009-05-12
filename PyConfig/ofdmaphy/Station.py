@@ -65,7 +65,7 @@ class OFDMAStation(MobileStation):
     systemManagerName = None
 
     def __init__(self, _receiver, _transmitter, parentLogger = None, eirpLimited = False, noOfAntenna = 4, arrayLayout = "linear", positionErrorVariance = 0.0):
-	super(OFDMAStation, self).__init__([Isotropic([0,0,1.5])], _receiver, _transmitter, parentLogger = parentLogger)
+        super(OFDMAStation, self).__init__([Isotropic([0,0,1.5])], _receiver, _transmitter, parentLogger = parentLogger)
         self.beamformingAntenna = BFAntenna(noOfAntenna, [0,0,1.5], arrayLayout, positionErrorVariance)
         self.systemManagerName = "ofdma"
         self.eirpLimited = eirpLimited
