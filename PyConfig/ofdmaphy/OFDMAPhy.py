@@ -34,9 +34,9 @@ class OFDMASystem(System):
     """ derived from RISE.System """
     name = None # my name must correspond with "name of the rise::SystemManager"
 
-    def __init__(self, name, **kw):
+    def __init__(self, name, **remainingArgs):
         self.name = name
-        attrsetter(self, kw)
+        attrsetter(self, remainingArgs)
 
 class OFDMAPhy(Module):
     systems = None # will contain a list of OFDMASystem's

@@ -35,7 +35,6 @@ from rise.scenario.FTFading import FTFadingOff
 
 # this class is used e.g. in winprost/support/Transceiver.py
 class OFDMAReceiver(Receiver):
-    #FTFadingStrategy = None # inherited from RISE.Receiver
     carrierSensing = None
     doMeasurementUpdates = False
     measurementUpdateInterval = None # if unspecified it will be taken from FTFading::samplingTime
@@ -45,7 +44,6 @@ class OFDMAReceiver(Receiver):
         super(OFDMAReceiver, self).__init__(propagation, propagationCharacteristicName, parentLogger=parentLogger, **kw)
         self.logger = Logger("OFDMAPhy", "PHY.OFDMAReceiver", True, parentLogger)
         self.measurementUpdateOffset = 0.0
-        #self.FTFadingStrategy = FTFadingOff() # initialized in RISE.Receiver
         attrsetter(self, kw)
     def switchMeasurementUpdates(self, doMeasurementUpdates,measurementUpdateInterval,measurementUpdateOffset):
         self.doMeasurementUpdates      = doMeasurementUpdates
@@ -57,4 +55,3 @@ class ReceiverDropIn(OFDMAReceiver):
     def __init__(self, parentLogger = None):
         super(ReceiverDropIn, self).__init__(DropInPropagation.getInstance(), "DropIn", receiverNoiseFigure = "0 dB", FTFadingStrategy = FTFadingOff(), parentLogger=parentLogger)
         self.logger = Logger("OFDMAPhy", "PHY.ReceiverDropIn", True, parentLogger)
-        #self.logger.level = 3 # only for debugging unitTest OFDMATest

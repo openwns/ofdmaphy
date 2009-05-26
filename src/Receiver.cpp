@@ -331,8 +331,6 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 	this->startObserving(s);
 
 	if (measurementUpdatesAreOn()) { // can also be done if ftfading == NULL
-		//if (!config.isNone("measurementUpdateInterval")) {
-		//	measurementUpdateInterval = config.get<simTimeType>("measurementUpdateInterval");
 		if ((getMeasurementUpdateInterval()==0.0) && (ftfading)) {
 			setMeasurementUpdateInterval(ftfading->getSamplingTime());
 		} else if (FTFadingIsActive()) {
@@ -343,11 +341,11 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 		MESSAGE_SINGLE(NORMAL, logger, "doMeasurementUpdates in intervals of "<<getMeasurementUpdateInterval()<<"s, offset="<<getMeasurementUpdateOffset());
 		startRegularMeasurementUpdates();
 	}
-	// TODO: handle wraparaoundShifts
+	// handle wraparaoundShifts:
 	wraparoundShiftVectors = s->getSystemManager()->getWraparoundShiftVectors();
-	// doWraparound = (wraparoundShiftVectors->size()>0) ? true:false;
+	// Is wraparound switched on? Answer is: doWraparound = (wraparoundShiftVectors->size()>0) ? true:false;
 	MESSAGE_SINGLE(NORMAL, logger, "wraparound: using "<<wraparoundShiftVectors->size()<<" ShiftVectors");
-	// HOWTO use the wraparoundShiftVectors:
+	// use the wraparoundShiftVectors like this:
 	int shiftListLength = wraparoundShiftVectors->size();
 	for(int i=0; i<shiftListLength; i++) {
 	  wns::geometry::Vector v = (*wraparoundShiftVectors)[i];
@@ -412,7 +410,6 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
 	wns::Ratio pathLoss = purePathLoss - transmittersAntennaGain - receiverAntennaGain;
 	// todo: store it in a cache?
 	MESSAGE_SINGLE(VERBOSE,logger, "  getQuasiStaticPathLoss() = " << pathLoss);
-	// if (doMeasurementUpdates) // too often here
 	return pathLoss;
 }
 
