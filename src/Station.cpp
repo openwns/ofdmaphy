@@ -477,7 +477,7 @@ Station::startTransmission(wns::osi::PDUPtr sdu,
 						   wns::service::phy::ofdma::PatternPtr pattern,
 						   wns::Power requestedTxPower)
 {
- 	MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Station::startTransmission(): WARNING: using old interface without PhyMode");
+	MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Station::startTransmission(): WARNING: using old interface without PhyMode");
 	startTransmission(sdu, _recipient, subBand, pattern, requestedTxPower, wns::service::phy::phymode::emptyPhyModePtr());
 }
 

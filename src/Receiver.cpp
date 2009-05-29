@@ -180,7 +180,7 @@ wns::Ratio FTFadingAspect::getFTFading(int _subCarrier)
 	assure(_subCarrier>=0,"subCarrier must be positive");
 	wns::Ratio _currentFading = ftfading->getFTFading(_subCarrier);
 	// positive value = constructive; negative value = destructive
-  	return _currentFading;
+	return _currentFading;
 }
 
 wns::Ratio FTFadingAspect::getFTFading(wns::node::Interface* source, int _subCarrier)
@@ -358,7 +358,7 @@ Receiver::~Receiver()
 {
 	delete propagationCache;
 	activeTransmissions.clear();
-	// TODO: cleanup FTfading object:
+	// cleanup FTfading object:
 	if (ftfading) { delete ftfading; ftfading=NULL; }
 }
 
