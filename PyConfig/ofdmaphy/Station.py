@@ -26,7 +26,7 @@
 ###############################################################################
 
 from openwns.logger import Logger
-from openwns import dBm, Position
+from openwns import dBm
 from rise.Antenna import Isotropic, BFAntenna, AntennaDropIn
 from ofdmaphy.Receiver import ReceiverDropIn
 from ofdmaphy.Transmitter import TransmitterDropIn
