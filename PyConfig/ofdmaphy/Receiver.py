@@ -40,8 +40,8 @@ class OFDMAReceiver(Receiver):
     measurementUpdateInterval = None # if unspecified it will be taken from FTFading::samplingTime
     measurementUpdateOffset = None
     wraparoundShiftVectors = None # None or empty list means wraparound off
-    def __init__(self, propagation, propagationCharacteristicName, parentLogger = None, **kw):
-        super(OFDMAReceiver, self).__init__(propagation, propagationCharacteristicName, parentLogger=parentLogger, **kw)
+    def __init__(self, propagation, propagationCharacteristicName,nSectors=1,parentLogger = None, **kw):
+        super(OFDMAReceiver, self).__init__(propagation, propagationCharacteristicName,nSectors=nSectors, parentLogger=parentLogger, **kw)
         self.logger = Logger("OFDMAPhy", "PHY.OFDMAReceiver", True, parentLogger)
         self.measurementUpdateOffset = 0.0
         attrsetter(self, kw)
