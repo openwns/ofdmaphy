@@ -46,6 +46,10 @@
 #include <map>
 #include <vector>
 
+#include <WNS/probe/bus/ProbeBus.hpp>
+#include <WNS/probe/bus/ProbeBusRegistry.hpp>
+#include <WNS/probe/bus/ContextCollector.hpp>
+
 namespace rise { namespace medium {
 	class PhysicalResource;
 } // medium
@@ -71,6 +75,7 @@ namespace ofdmaphy {
 		virtual wns::Power getNoisePerSubChannel() const = 0; // required
 	protected:
 		wns::logger::Logger logger;
+		//int nSectors;
 		/** @brief information element for measurements and fading */
 		/** @brief maps from the source to its measured pathloss,ftfading */
 		typedef std::map< wns::node::Interface*, PerSourceContainer > PerSourceMap;
@@ -95,7 +100,7 @@ namespace ofdmaphy {
 		/** @brief get noise power on any subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
 		virtual wns::Power getNoisePerSubChannel() const;
 		/** @brief get noise power on specific subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
- 		virtual wns::Power getNoise(int subCarrier) const;
+		virtual wns::Power getNoise(int subCarrier) const;
 		/** @brief get receiverNoiseFigure */
 		wns::Ratio getNoiseFigure() const;
 		/** @brief translate frequency to subcarrier (required for FTFading) */
@@ -286,7 +291,9 @@ namespace ofdmaphy {
 
 		wns::Power receivedSignalStrength;
 
-	        const rise::SystemManager::WraparoundShiftVectorContainer* wraparoundShiftVectors;
+		const rise::SystemManager::WraparoundShiftVectorContainer* wraparoundShiftVectors;
+
+		int nSectors;
 	};
 }
 

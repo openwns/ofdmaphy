@@ -37,6 +37,10 @@
 #include <RISE/transceiver/transmitter.hpp>
 #include <RISE/transceiver/cache/idvectorcache.hpp>
 
+#include <WNS/probe/bus/ProbeBus.hpp>
+#include <WNS/probe/bus/ProbeBusRegistry.hpp>
+#include <WNS/probe/bus/ContextCollector.hpp>
+
 #include <valarray>
 
 using namespace ofdmaphy;
@@ -47,6 +51,7 @@ ReceiverBase::ReceiverBase()
 
 ReceiverBase::ReceiverBase(const wns::pyconfig::View& config) :
 	logger(config.getView("logger"))
+	//nSectors(config.get<int>("nSectors"))
 {
 	assure(logger.getModuleName().compare("unspecified")!=0,"logger problem");
 	//std::cout << "ReceiverBase.logger: "<<logger.getModuleName()<<"."<<logger.getLoggerName()<<std::endl;
@@ -326,7 +331,8 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 	//logger(config.getView("logger")),
 	station(s),
 	propagationCache(new rise::IdVectorCache(this)),
-	wraparoundShiftVectors(NULL)
+	wraparoundShiftVectors(NULL),
+	nSectors(config.get<int>("nSectors"))
 {
 	this->startObserving(s);
 
@@ -446,10 +452,12 @@ wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::servi
 	  m << userName <<"): ";
 	MESSAGE_END();
 	wns::Power rxPower = t->getTxPower();
-	MESSAGE_SINGLE(VERBOSE,logger, "  TxPower: " << rxPower);
+	MESSAGE_SINGLE(NORMAL,logger, "TxPower: " << rxPower);
 	wns::Ratio fullPathLoss = getFullPathLoss(t,pattern);
+	MESSAGE_SINGLE(NORMAL, logger, "PathLoss FUll (inside getRxPower) " << fullPathLoss );
+
 	rxPower -= fullPathLoss;
-	MESSAGE_SINGLE(VERBOSE,logger, "  RxPower: " << rxPower);
+	MESSAGE_SINGLE(NORMAL,logger, "RxPower: " << rxPower);
 	return rxPower;
 }
 
@@ -512,9 +520,10 @@ wns::Power Receiver::getAllRxPower()
 wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
 {
 	// Init with thermal noise plus receiver noise figure
-	MESSAGE_SINGLE(VERBOSE, logger, "---------------- Starting Interference Calculation -----------------");
+	MESSAGE_SINGLE(NORMAL, logger, "---------------- Starting Interference Calculation -----------------");
 	wns::Power interference = getNoisePerSubChannel();
-	MESSAGE_SINGLE(VERBOSE, logger, "Noise: " << interference);
+	MESSAGE_SINGLE(NORMAL, logger, "Noise: " << interference );
+	MESSAGE_SINGLE(NORMAL, logger, "nSectors: " << nSectors );
 
 	rise::medium::PhysicalResource::TransmissionObjectIterator itr;
 	wns::service::phy::ofdma::PatternPtr currentPattern = getCurrentReceivePattern(t);
@@ -524,8 +533,51 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
 				//MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Receiver::getInterference(): own transmission");
 				// exclude from addition here, as getRxPower() might be costly.
 			} else {
-			  // this calculation must also be done for all phantom positions of wraparoundShiftVectors:
-				interference += getRxPower(*itr, currentPattern);
+				if (nSectors == 1){
+					interference += getRxPower(*itr, currentPattern);
+				}
+				else if (nSectors == 3)
+				{
+					wns::Position interfering = (*itr)->getTransmitter()->getAntenna()->getPosition();
+					Station* ofdmaStation = getOFDMAStation();
+
+					MESSAGE_SINGLE(NORMAL, logger, ofdmaStation->getNode()->getName());
+
+					if( (ofdmaStation->getNode()->getName().at(0)) == 'A' )
+					{
+						MESSAGE_SINGLE(NORMAL, logger, "AP is the receiver" );
+						wns::Position BSpos = ofdmaStation->getBFAntenna()->getPosition();
+
+						double phi = ((interfering - BSpos).getAzimuth()*180)/M_PI;
+
+						MESSAGE_SINGLE(NORMAL, logger, "Angle between "<< (*itr)->getTransmitter()->getStation()->getStationId() + 1 << " and " << ofdmaStation->getNode()->getNodeID() -1 << " is: " << phi );
+
+						if(phi <= 90 && phi >= -30) //for three sectors
+						{
+							MESSAGE_SINGLE(NORMAL, logger, "Interference due to " << (*itr)->getTransmitter()->getStation()->getStationId() + 1 << " in the signal of station " << t->getTransmitter()->getStation()->getStationId() + 1 << " at the receiver station "<< ofdmaStation->getNode()->getNodeID() -1 <<" : "<< getRxPower(*itr, currentPattern) );
+
+							interference += getRxPower(*itr, currentPattern);
+						}
+					}
+					else
+					{
+						MESSAGE_SINGLE(NORMAL, logger, "UT is the receiver" );
+						wns::Position SSpos = ofdmaStation->getBFAntenna()->getPosition();
+
+						double phi = ((SSpos-interfering).getAzimuth()*180)/M_PI;
+
+						MESSAGE_SINGLE(NORMAL, logger, "Angle between "<< ofdmaStation->getNode()->getNodeID() -1 << " and " << (*itr)->getTransmitter()->getStation()->getStationId() + 1  << " is: " << phi );
+
+						if(phi <= 90 && phi >= -30)//for three sectors
+						{
+							interference += getRxPower(*itr, currentPattern);
+
+							MESSAGE_SINGLE(NORMAL, logger, "Interference due to " << (*itr)->getTransmitter()->getStation()->getStationId() + 1 << " inside the signal of station " << t->getTransmitter()->getStation()->getStationId() + 1 << " at the receiver station "<< ofdmaStation->getNode()->getNodeID() -1 <<" : "<< getRxPower(*itr, currentPattern) );
+						}
+					}
+				} // for 3 sectors*/
+				else {interference += getRxPower(*itr, currentPattern);
+				}
 				MESSAGE_BEGIN(VERBOSE, logger, m, "");
 				int32_t stationId = (*itr)->getTransmitter()->getStation()->getStationId();
 				m << "RxPower from StationId " << stationId << " = " << getRxPower(*itr, currentPattern);
