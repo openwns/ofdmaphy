@@ -29,16 +29,16 @@ from rise.Scenario import Scenario
 from rise.Mobility import No
 import rise.System
 
-class System(rise.System):
+class System(rise.System.System):
     """ derived from RISE.System """
     name = None
 
-    def __init__(self):
-       """ TODO: Description """
+    def __init__(self, scenario = None, wraparoundShiftVectors = []):
+        super(System, self).__init__(scenario, wraparoundShiftVectors)
+        """ TODO: Description """
         self.name = "OFDMA"
 
 class DropIn(System):
     def __init__(self):
-        super(DropIn, self).__init__()
-        self.Scenario = Scenario(500, 500)
+        super(DropIn, self).__init__(Scenario(xmin = 0,ymin = 0,xmax = 500,ymax = 500))
         self.name = "OFDMATest"
