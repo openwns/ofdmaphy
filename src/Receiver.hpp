@@ -51,250 +51,348 @@
 #include <WNS/probe/bus/ContextCollector.hpp>
 
 namespace rise { namespace medium {
-	class PhysicalResource;
-} // medium
+        class PhysicalResource;
+    } // medium
 } // rise
 
 namespace ofdmaphy {
-	struct PerSourceContainer {
-		int packetCount;
-		rise::scenario::ftfading::FTFading* ftfading;
-		wns::Ratio quasiStaticPathLoss;
-		std::vector<wns::Power> interferenceVector;
-	};
-	/**
-	 * @brief base class for all aspects of OFDMA receiver
-	 */
-	class ReceiverBase
-	{
-	public:
-		ReceiverBase();
-		ReceiverBase(const wns::pyconfig::View& config);
-		virtual ~ReceiverBase();
-		virtual int getCurrentNumberOfSubCarriers() const = 0; // required
-		virtual wns::Power getNoisePerSubChannel() const = 0; // required
-	protected:
-		wns::logger::Logger logger;
-		//int nSectors;
-		/** @brief information element for measurements and fading */
-		/** @brief maps from the source to its measured pathloss,ftfading */
-		typedef std::map< wns::node::Interface*, PerSourceContainer > PerSourceMap;
-		/** @brief container for multiple objects, one per source */
-		PerSourceMap perSourceMap;
-	};
+    struct PerSourceContainer {
+        int packetCount;
+        rise::scenario::ftfading::FTFading* ftfading;
+        wns::Ratio quasiStaticPathLoss;
+        std::vector<wns::Power> interferenceVector;
+    };
 
-	/**
+    /**
+	 * @brief abstract base class for all aspects of OFDMA receiver
+	 */
+    class ReceiverBase
+    {
+    public:
+        /** @brief Constructor */
+        ReceiverBase();
+
+        /** @brief Constructor with pyconfig */
+        ReceiverBase(const wns::pyconfig::View& config);
+
+        /** @brief Destructor */
+        virtual ~ReceiverBase();
+
+        virtual int
+        getCurrentNumberOfSubCarriers() const = 0;
+
+        virtual wns::Power
+        getNoisePerSubChannel() const = 0;
+
+    protected:
+        wns::logger::Logger logger;
+
+        /**
+         * @brief information element for measurements and fading maps from the
+         * source to its measured pathloss,ftfading
+         */
+        typedef std::map<wns::node::Interface*, PerSourceContainer> PerSourceMap;
+
+        /** @brief container for multiple objects, one per source */
+        PerSourceMap perSourceMap;
+    };
+
+    /**
 	 * @brief implements the OFDMA Aspect of a MultiCarrier receiver
 	 */
-	class OFDMAAspect :
-		virtual public ReceiverBase,
-		virtual public rise::receiver::ReceiverInterface,
-		virtual public rise::receiver::MultiCarrierAspect
-	{
-		typedef std::vector<rise::medium::PhysicalResource*> PhysicalResourceContainer;
-	public:
-		OFDMAAspect(wns::Ratio rnf);
-		// MultiCarrierAspect
-		/** @brief allocate physicalResources for all OFDMA subCarriers */
-		virtual void tune(double f, double b, int numberOfSubCarriers);
-		/** @brief get noise power on any subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
-		virtual wns::Power getNoisePerSubChannel() const;
-		/** @brief get noise power on specific subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
-		virtual wns::Power getNoise(int subCarrier) const;
-		/** @brief get receiverNoiseFigure */
-		wns::Ratio getNoiseFigure() const;
-		/** @brief translate frequency to subcarrier (required for FTFading) */
-		virtual int getSubCarrierIndex(double f);
+    class OFDMAAspect :
+        virtual public ReceiverBase,
+        virtual public rise::receiver::ReceiverInterface,
+        virtual public rise::receiver::MultiCarrierAspect
+    {
+        typedef std::vector<rise::medium::PhysicalResource*> PhysicalResourceContainer;
 
-	protected:
-		/** @brief for each subCarrier there is a physicalResource in this container */
-		PhysicalResourceContainer physicalResources;
+    public:
+        OFDMAAspect(wns::Ratio rnf);
 
-		/** @brief number of subCarriers of this OFDMA system */
-		int getCurrentNumberOfSubCarriers() const { return currentNumberOfSubCarriers; }
+        /** @brief allocate physicalResources for all OFDMA subCarriers */
+        virtual void
+        tune(double f, double b, int numberOfSubCarriers);
 
-	private:
-		/** @brief receiverNoiseFigure is set by the constructor */
-		wns::Ratio receiverNoiseFigure;
-		/** @brief number of OFDMA subcarriers */
-		int currentNumberOfSubCarriers;
-		/** @brief bandwidth of one subcarrier */
-		double carrierBandwidth;
-		double lowestFrequency;
-		double firstCarrierMidFrequency;
-	};
+        /** @brief get noise power on any subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
+        virtual wns::Power
+        getNoisePerSubChannel() const;
 
-	/**
+        /** @brief get noise power on specific subCarrier (-174dBm/Hz*BW+receiverNoiseFigure) */
+        virtual wns::Power
+        getNoise(int subCarrier) const;
+
+        /** @brief get receiverNoiseFigure */
+        wns::Ratio
+        getNoiseFigure() const;
+
+        /** @brief translate frequency to subcarrier (required for FTFading) */
+        virtual int
+        getSubCarrierIndex(double f);
+
+    protected:
+        /** @brief for each subCarrier there is a physicalResource in this container */
+        PhysicalResourceContainer physicalResources;
+
+        /** @brief number of subCarriers of this OFDMA system */
+        int
+        getCurrentNumberOfSubCarriers() const
+            { return currentNumberOfSubCarriers; }
+
+    private:
+        /** @brief receiverNoiseFigure is set by the constructor */
+        wns::Ratio receiverNoiseFigure;
+
+        /** @brief number of OFDMA subcarriers */
+        int currentNumberOfSubCarriers;
+
+        /** @brief bandwidth of one subcarrier */
+        double carrierBandwidth;
+        double lowestFrequency;
+        double firstCarrierMidFrequency;
+    };
+
+    /**
 	 * @brief implements the FTFading Aspect of a MultiCarrier receiver
 	 */
-	class FTFadingAspect :
-		virtual public ReceiverBase
-	{
-		friend class MeasurementAspect;
-	public:
-		FTFadingAspect(const wns::pyconfig::View& config);
-		virtual ~FTFadingAspect();
-		bool FTFadingIsActive() const;
-	protected:
-		// next lines by [afo]:
-		/** @brief get the current (frequency-and-time dependent) fading level of one subcarrier
+    class FTFadingAspect :
+        virtual public ReceiverBase
+    {
+        friend class MeasurementAspect;
+
+    public:
+        FTFadingAspect(const wns::pyconfig::View& config);
+        virtual ~FTFadingAspect();
+
+        bool
+        FTFadingIsActive() const;
+
+    protected:
+        // next lines by [afo]:
+        /** @brief get the current (frequency-and-time dependent) fading level of one subcarrier
 		 * [+3..-inf] dB
 		 */
-		virtual wns::Ratio getFTFading(int _subCarrier);
-		virtual wns::Ratio getFTFading(wns::node::Interface* source, int _subCarrier);
-		//virtual wns::Ratio getFTFading(rise::Station* source, int _subCarrier);
-		// next line by [afo]:
-		/** @brief single FTFading object */
-		rise::scenario::ftfading::FTFading* ftfading; // single fading object; all sources are treated the same
-	private:
-		bool active;
-		simTimeType samplingTime;
-	};
+        virtual wns::Ratio
+        getFTFading(int _subCarrier);
 
-	/**
+        virtual wns::Ratio
+        getFTFading(wns::node::Interface* source, int _subCarrier);
+
+        // next line by [afo]:
+        /** @brief single FTFading object */
+        rise::scenario::ftfading::FTFading* ftfading;
+
+    private:
+        bool active;
+        simTimeType samplingTime;
+    };
+
+    /**
 	 * @brief implements the Measurement Aspect of a MultiCarrier receiver
 	 */
-	class MeasurementAspect :
-		virtual public ReceiverBase,
-		protected wns::events::CanTimeout // regular intervals
-	{
-		friend class FTFadingAspect;
-	public:
-		MeasurementAspect(const wns::pyconfig::View& config);
-		virtual ~MeasurementAspect();
-	protected:
-		void startRegularMeasurementUpdates();
-		/** @brief Periodically executed to give measurementUpdates */
-		virtual void onTimeout();
-		virtual void doMeasurementsNow() = 0; // to be implemented by Receiver
-		virtual simTimeType getMeasurementUpdateInterval() const { return measurementUpdateInterval; }
-		virtual void setMeasurementUpdateInterval(simTimeType _measurementUpdateInterval) { measurementUpdateInterval=_measurementUpdateInterval; }
-		virtual simTimeType getMeasurementUpdateOffset() const { return measurementUpdateOffset; }
-		virtual bool measurementUpdatesAreOn() const { return doMeasurementUpdates; }
-		virtual void registerSource(wns::node::Interface* source);
-		virtual PerSourceContainer& getPerSourceContainer(wns::node::Interface* source);
-		/** @brief simplified interface if only TransmissionObjectPtr is known; returns node */
-		virtual wns::node::Interface* registerSource(rise::TransmissionObjectPtr t);
-		virtual void saveMeasuredFlatPathloss(wns::node::Interface* source, wns::Ratio pathloss);
-	protected:
-		/** @brief do call onMeasurementUpdate in regular intervals if true */
-		bool doMeasurementUpdates;
-		/** @brief time between measurement updates */
-		simTimeType measurementUpdateInterval;
-		simTimeType measurementUpdateOffset;
-	private:
-	};
+    class MeasurementAspect :
+        virtual public ReceiverBase,
+        protected wns::events::CanTimeout // regular intervals
+    {
+        friend class FTFadingAspect;
 
-	/**
+    public:
+        MeasurementAspect(const wns::pyconfig::View& config);
+        virtual ~MeasurementAspect();
+
+    protected:
+        void
+        startRegularMeasurementUpdates();
+
+        /** @brief Periodically executed to give measurementUpdates */
+        virtual void
+        onTimeout();
+
+        /** @brief to be implemented by Receiver */
+        virtual void
+        doMeasurementsNow() = 0;
+
+        virtual simTimeType
+        getMeasurementUpdateInterval() const
+            { return measurementUpdateInterval; }
+
+        virtual void
+        setMeasurementUpdateInterval(simTimeType _measurementUpdateInterval)
+            { measurementUpdateInterval=_measurementUpdateInterval; }
+
+        virtual simTimeType
+        getMeasurementUpdateOffset() const
+            { return measurementUpdateOffset; }
+
+        virtual bool
+        measurementUpdatesAreOn() const
+            { return doMeasurementUpdates; }
+
+        virtual void
+        registerSource(wns::node::Interface* source);
+
+        virtual PerSourceContainer&
+        getPerSourceContainer(wns::node::Interface* source);
+
+        /** @brief simplified interface if only TransmissionObjectPtr is known; returns node */
+        virtual wns::node::Interface*
+        registerSource(rise::TransmissionObjectPtr t);
+
+        virtual void
+        saveMeasuredFlatPathloss(wns::node::Interface* source, wns::Ratio pathloss);
+
+        /** @brief do call onMeasurementUpdate in regular intervals if true */
+        bool doMeasurementUpdates;
+
+        /** @brief time between measurement updates */
+        simTimeType measurementUpdateInterval;
+        simTimeType measurementUpdateOffset;
+
+    };
+
+    /**
 	 * @brief OFDMA implementation of MultiCarrier receiver
 	 */
-	class Receiver :
-		virtual public ReceiverBase,
-		public OFDMAAspect,
-		public FTFadingAspect,
-		public MeasurementAspect,
-		public rise::receiver::TimeWeightedTransmissionAveraging,
-		protected rise::receiver::LossCalculation,
-		public wns::Subject<RSSInterface>
-	{
-	public:
-		Receiver(const wns::pyconfig::View& config, rise::Station* s);
+    class Receiver :
+        virtual public ReceiverBase,
+        public OFDMAAspect,
+        public FTFadingAspect,
+        public MeasurementAspect,
+        public rise::receiver::TimeWeightedTransmissionAveraging,
+        protected rise::receiver::LossCalculation,
+        public wns::Subject<RSSInterface>
+    {
+    public:
+        Receiver(const wns::pyconfig::View& config, rise::Station* s);
 
-		virtual ~Receiver();
-//		std::vector<wns::Ratio> currentFTFading;
+        virtual ~Receiver();
 
-		/** @brief SignalCalculationInterface */
-		virtual wns::Power getRxPower(const rise::TransmissionObjectPtr& t);
+        /** @brief SignalCalculationInterface */
+        virtual wns::Power
+        getRxPower(const rise::TransmissionObjectPtr& t);
 
-		/** @brief Sum of all RxPowers (per SubCarrier, all) */
-		virtual wns::Power getAllRxPower(const int subCarrier);
-		virtual wns::Power getAllRxPower();
+        /** @brief Sum of all RxPowers (per SubCarrier) */
+        virtual wns::Power
+        getAllRxPower(const int subCarrier);
 
-		/** @brief InterferenceCalculationInterface
-		 * determine power of all active transmissions except own
-		 */
-		virtual wns::Power getInterference(const rise::TransmissionObjectPtr& t);
+        /** @brief Sum of all RxPowers (all) */
+        virtual wns::Power
+        getAllRxPower();
 
-		/** @brief PositionObserver */
-		virtual void positionWillChange();
-		virtual void positionChanged();
+        /** @brief InterferenceCalculationInterface: determine power of all
+         *   active transmissions except own
+         */
+        virtual wns::Power
+        getInterference(const rise::TransmissionObjectPtr& t);
 
-		/** @brief PhysicalResourceObserver
+        /** @brief PositionObserver */
+        virtual void
+        positionWillChange();
+
+        virtual void
+        positionChanged();
+
+        /** @brief PhysicalResourceObserver
+         *
 		 * notify is called when startTransmission and stopTransmission happens
 		 * this triggers the call of getStation()->receiveData()
 		 */
-		virtual void notify(rise::TransmissionObjectPtr t);
-		/** @brief doMeasurementsNow is called in regular intervals */
-		virtual void doMeasurementsNow(); // interface from MeasurementAspect
-		virtual void mobilityUpdate(rise::Transmitter* t);
+        virtual void
+        notify(rise::TransmissionObjectPtr t);
 
-		/** @brief PropagationCache interface */
-		virtual void writeCacheEntry(rise::PropCacheEntry& cacheEntry, rise::Transmitter* t, double freq);
+        /** @brief doMeasurementsNow is called in regular intervals */
+        virtual void
+        doMeasurementsNow();
 
-		/** @brief functor for newRSSInterface::onNewRSS calls */
-		struct OnNewRSS
-		{
-			OnNewRSS(const wns::Power _rss):
-				rss(_rss)
-				{}
+        virtual void
+        mobilityUpdate(rise::Transmitter* t);
 
-			void operator()(RSSInterface* rss)
-				{
-					// The functor calls the onNewRSS implemented by the Observer
-					rss->onNewRSS(this->rss);
-				}
-		private:
-			wns::Power rss;
-		};
+        /** @brief PropagationCache interface */
+        virtual void
+        writeCacheEntry(rise::PropCacheEntry& cacheEntry, rise::Transmitter* t, double freq);
 
-		// other
-		void insertReceivePattern(wns::node::Interface*, wns::service::phy::ofdma::PatternPtr);
-		void removeReceivePattern(wns::node::Interface*);
-		void setCurrentReceivePatterns(std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> _currentReceivePatterns);
-		virtual wns::service::phy::ofdma::PatternPtr getCurrentReceivePattern(const rise::TransmissionObjectPtr& t) const;
-		virtual wns::service::phy::ofdma::PatternPtr getCurrentReceivePattern(wns::node::Interface* pStack) const;
-		bool isReceiving() const;
+        /** @brief functor for newRSSInterface::onNewRSS calls */
+        struct OnNewRSS
+        {
+            OnNewRSS(const wns::Power _rss):
+                rss(_rss)
+                {}
 
-		virtual void tune(double f, double b, int numberOfSubCarriers);
+            void operator()(RSSInterface* rss)
+                {
+                    // The functor calls the onNewRSS implemented by the Observer
+                    rss->onNewRSS(this->rss);
+                }
+        private:
+            wns::Power rss;
+        };
 
-	protected:
-		//wns::logger::Logger logger;
+        void
+        insertReceivePattern(wns::node::Interface*, wns::service::phy::ofdma::PatternPtr);
 
-		wns::Power getRxPower(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
-		wns::Power getUnfilteredRxPower(const rise::TransmissionObjectPtr& t);
+        void
+        removeReceivePattern(wns::node::Interface*);
 
-	private:
-		/** @brief PathlossCalculationInterface (from propagation cache) */
-		virtual wns::Ratio getLoss(rise::Transmitter* t, double f);
-		virtual wns::Ratio getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
-		virtual wns::Ratio getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
+        void
+        setCurrentReceivePatterns(std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> _currentReceivePatterns);
 
-		virtual rise::Station* getStation() const
-			{
-				assure(station, "Not set");
-				return station;
-			}
+        virtual wns::service::phy::ofdma::PatternPtr
+        getCurrentReceivePattern(const rise::TransmissionObjectPtr& t) const;
 
-		Station* getOFDMAStation() const
-			{
-				Station* tmp = dynamic_cast<Station*>(getStation());
-				assure(tmp, "Station is not an OFDMA Station");
-				return tmp;
-			}
+        virtual wns::service::phy::ofdma::PatternPtr
+        getCurrentReceivePattern(wns::node::Interface* pStack) const;
 
-		rise::Station* station;
+        bool
+        isReceiving() const;
 
-		rise::PropagationCache* propagationCache;
+        virtual void
+        tune(double f, double b, int numberOfSubCarriers);
 
-		std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> currentReceivePatterns;
-		std::list<rise::TransmissionObjectPtr> activeTransmissions;
+    protected:
 
-		wns::Power receivedSignalStrength;
+        wns::Power
+        getRxPower(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
 
-		const rise::SystemManager::WraparoundShiftVectorContainer* wraparoundShiftVectors;
+        wns::Power
+        getUnfilteredRxPower(const rise::TransmissionObjectPtr& t);
 
-		int nSectors;
-	};
+    private:
+        /** @brief PathlossCalculationInterface (from propagation cache) */
+        virtual wns::Ratio
+        getLoss(rise::Transmitter* t, double f);
+
+        virtual wns::Ratio
+        getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
+
+        virtual wns::Ratio
+        getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
+
+        virtual rise::Station* getStation() const
+            {
+                assure(station, "Not set");
+                return station;
+            }
+
+        Station* getOFDMAStation() const
+            {
+                Station* tmp = dynamic_cast<Station*>(getStation());
+                assure(tmp, "Station is not an OFDMA Station");
+                return tmp;
+            }
+
+        rise::Station* station;
+
+        rise::PropagationCache* propagationCache;
+
+        std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> currentReceivePatterns;
+        std::list<rise::TransmissionObjectPtr> activeTransmissions;
+
+        wns::Power receivedSignalStrength;
+
+        const rise::SystemManager::WraparoundShiftVectorContainer* wraparoundShiftVectors;
+
+        int nSectors;
+    };
 }
 
 #endif // not defined __RISE_OFDMA_HPP
