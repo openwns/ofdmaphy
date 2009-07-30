@@ -267,6 +267,12 @@ namespace ofdmaphy {
         bool
         beamformingEnabled() const;
 
+        Receiver* 
+        getReceiver(){return receiver;};
+
+        Transmitter<Station>* 
+        getTransmitter(){return transmitter;};
+
     protected:
         bool eirpLimited;
 

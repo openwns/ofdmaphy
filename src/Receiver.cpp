@@ -798,6 +798,10 @@ void Receiver::positionWillChange()
 // triggered by PhysicalResourceObserver::notify in RISE/PhysicalResource.cpp
 void Receiver::notify(rise::TransmissionObjectPtr t)
 {
+	// Do not receive from myself
+    if(t->getTransmitter() == getOFDMAStation()->getTransmitter())
+        return;
+
     if (transmissionForMe(t))
     {
         //Station* ofdmaStation = getOFDMAStation();
