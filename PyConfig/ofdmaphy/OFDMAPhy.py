@@ -44,3 +44,14 @@ class OFDMAPhy(Module):
         super(OFDMAPhy, self).__init__("ofdmaphy", "ofdmaphy")
         self.systems = []
         #self.logger.enabled = False # there is almost no output on this logger
+
+    def knowsSystem(self, system):
+        if system.name in [s.name for s in self.systems]:
+            return True
+        return False
+
+    def updateSystem(self, system):
+        if self.knowsSystem(system):
+            index = [s.name for s in self.systems].index(system.name)
+            self.systems.remove(self.systems[index])
+        self.systems.append(system)

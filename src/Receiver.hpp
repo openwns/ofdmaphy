@@ -356,7 +356,6 @@ namespace ofdmaphy {
         wns::Power
         getUnfilteredRxPower(const rise::TransmissionObjectPtr& t);
 
-    private:
         /** @brief PathlossCalculationInterface (from propagation cache) */
         virtual wns::Ratio
         getLoss(rise::Transmitter* t, double f);
@@ -367,6 +366,7 @@ namespace ofdmaphy {
         virtual wns::Ratio
         getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
 
+    private:
         virtual rise::Station* getStation() const
             {
                 assure(station, "Not set");

@@ -83,6 +83,11 @@ namespace ofdmaphy {
 
 			wns::probe::bus::ContextCollectorPtr rxpContextCollector;
 			wns::probe::bus::ContextCollectorPtr sinrContextCollector;
+            wns::probe::bus::ContextCollectorPtr pathlossContextCollector;
+            wns::probe::bus::ContextCollectorPtr maxRxpContextCollector;
+            wns::probe::bus::ContextCollectorPtr maxSINRContextCollector;
+            wns::probe::bus::ContextCollectorPtr minPathlossContextCollector;
+            wns::probe::bus::ContextCollectorPtr losNLOSRatioContextCollector;
 		};
 
 	public:

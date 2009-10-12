@@ -86,7 +86,7 @@ class OFDMAStationDropIn(OFDMAStation):
 
 class Sender(MobileStation, openwns.node.Component):
 
-    txFrequency = 5000
+    txFrequency = 2000
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
@@ -105,7 +105,7 @@ class Sender(MobileStation, openwns.node.Component):
 
 class Scanner(MobileStation, openwns.node.Component):
 
-    rxFrequency = 5000
+    rxFrequency = 2000
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
@@ -114,6 +114,10 @@ class Scanner(MobileStation, openwns.node.Component):
 
     rxpProbeName  = None
     sinrProbeName = None
+    pathlossProbeName = None
+    maxRxpProbeName  = None
+    maxSINRProbeName = None
+    minPathlossProbeName = None
 
     def __init__(self, node, name, _receiver, parentLogger = None):
         openwns.node.Component.__init__(self, node, name)
