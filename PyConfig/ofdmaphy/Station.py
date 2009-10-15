@@ -86,13 +86,13 @@ class OFDMAStationDropIn(OFDMAStation):
 
 class Sender(MobileStation, openwns.node.Component):
 
-    txFrequency = 2000
+    txFrequency = 1999.6094
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
     bandwidth = numberOfSubCarrier * 0.7812 # for which system? TODO: make independent
     txPower = "-0.17 dBm" # Power per subcarrier
-    subBand = 1
+    subBand = 52
     systemManagerName = "OFDMA"
 
     def __init__(self, node, name, _transmitter, parentLogger = None):
@@ -105,7 +105,7 @@ class Sender(MobileStation, openwns.node.Component):
 
 class Scanner(MobileStation, openwns.node.Component):
 
-    rxFrequency = 2000
+    rxFrequency = 1999.6094
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz

@@ -71,9 +71,12 @@ Scanner::Receiver::positionChanged()
 {
     ofdmaphy::Receiver::positionChanged();
 
+    wns::Position currentPosition = getStation()->getAntenna()->getPosition();
+
     wns::Ratio maxSINR = wns::Ratio::from_dB(-250);
     wns::Power maxRxPwr = wns::Power::from_dBm(-250);
     wns::Ratio minPathloss = wns::Ratio::from_dB(300);
+    double assocdistance = 0.0;
 
 	for (TOList::const_iterator itr = transmissions.begin();
 		 itr != transmissions.end();
@@ -81,18 +84,23 @@ Scanner::Receiver::positionChanged()
 	{
 		Transmitter<Sender>* transmitter = 
 			dynamic_cast<Transmitter<Sender>*>((*itr)->getTransmitter());
+
+        wns::Position bsPosition = transmitter->getAntenna()->getPosition();
+        double distance = (bsPosition - currentPosition).abs();
 		wns::Power txp    = (*itr)->getTxPower();
 		wns::Power rxp    = this->getRxPower(*itr);
 		wns::Power interf = this->getInterference(*itr);
 		wns::Ratio sinr   = rxp / interf;
         wns::Frequency f = 2000.0; 
         wns::Ratio pathloss = this->getQuasiStaticPathLoss((*itr), wns::service::phy::ofdma::PatternPtr());
+        pathloss += wns::Ratio::from_dB(2.0);
 
         maxSINR = std::max(maxSINR, sinr);
         maxRxPwr = std::max(maxRxPwr, rxp);
         if (pathloss < minPathloss)
         {
             minPathloss = pathloss;
+            assocdistance = distance;
         }
 
 
@@ -123,6 +131,7 @@ Scanner::Receiver::positionChanged()
     maxRxpContextCollector->put(maxRxPwr.get_dBm());
     maxSINRContextCollector->put(maxSINR.get_dB());
     minPathlossContextCollector->put(-1 * minPathloss.get_dB());
+    distanceContextCollector->put(assocdistance);
 
     if(minPathloss.los)
     {
@@ -180,6 +189,10 @@ Scanner::Receiver::initProbes(const wns::pyconfig::View& config)
     minPathlossContextCollector = wns::probe::bus::ContextCollectorPtr(
         new wns::probe::bus::ContextCollector(localcpc,
                                               config.get<std::string>("minPathlossProbeName")));
+
+    distanceContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("distanceProbeName")));
 
     losNLOSRatioContextCollector = wns::probe::bus::ContextCollectorPtr(new wns::probe::bus::ContextCollector(localcpc, "rise.scenario.pathloss.ITUPathloss.losNLOSRatio"));
 }

@@ -366,7 +366,6 @@ namespace ofdmaphy {
         virtual wns::Ratio
         getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
 
-    private:
         virtual rise::Station* getStation() const
             {
                 assure(station, "Not set");
@@ -380,6 +379,7 @@ namespace ofdmaphy {
                 return tmp;
             }
 
+    private:
         rise::Station* station;
 
         rise::PropagationCache* propagationCache;
