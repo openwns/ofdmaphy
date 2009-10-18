@@ -91,7 +91,6 @@ Scanner::Receiver::positionChanged()
 		wns::Power rxp    = this->getRxPower(*itr);
 		wns::Power interf = this->getInterference(*itr);
 		wns::Ratio sinr   = rxp / interf;
-        wns::Frequency f = 2000.0; 
         wns::Ratio pathloss = this->getQuasiStaticPathLoss((*itr), wns::service::phy::ofdma::PatternPtr());
         pathloss += wns::Ratio::from_dB(2.0);
 

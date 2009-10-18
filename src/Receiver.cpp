@@ -448,7 +448,7 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
     //Station* transmitterOFDMAStation = dynamic_cast<Station*>(transmitter->getStation());
     //assure(transmitterOFDMAStation != NULL,"Transmitter must have an OFDMAStation"); // new [rs] 24.10.2007
 
-    wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition());
+    wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getAntenna()->getPosition());
     // Idea: wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition()->shift(x,y));
     // Idea: wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition()+wns::PositionOffset(x,y,0));
     // Idea: instead of (x,y) we could use wns::PositionOffset()

@@ -86,7 +86,8 @@ class OFDMAStationDropIn(OFDMAStation):
 
 class Sender(MobileStation, openwns.node.Component):
 
-    txFrequency = 1999.6094
+    #txFrequency = 1999.6094
+    txFrequency = 3399.6094
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
@@ -95,17 +96,18 @@ class Sender(MobileStation, openwns.node.Component):
     subBand = 52
     systemManagerName = "OFDMA"
 
-    def __init__(self, node, name, _transmitter, parentLogger = None):
+    def __init__(self, node, name, _transmitter, centerFrequency, parentLogger = None):
         openwns.node.Component.__init__(self, node, name)
         MobileStation.__init__(self, [Isotropic([0,0,1.5])], None,  _transmitter, parentLogger = parentLogger)
 
         self.logger = Logger("OFDMAPHY", "Sender", True, parentLogger)
         self.nameInComponentFactory = 'ofdmaphy.Sender'
-
+        self.txFrequency = centerFrequency - 0.7812/2.0
 
 class Scanner(MobileStation, openwns.node.Component):
 
-    rxFrequency = 1999.6094
+    #rxFrequency = 1999.6094
+    rxFrequency = 3399.6094
     numberOfSubCarrier = 104                # for which system? TODO: make independent
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
@@ -119,9 +121,10 @@ class Scanner(MobileStation, openwns.node.Component):
     maxSINRProbeName = None
     minPathlossProbeName = None
 
-    def __init__(self, node, name, _receiver, parentLogger = None):
+    def __init__(self, node, name, _receiver, centerFrequency, parentLogger = None):
         openwns.node.Component.__init__(self, node, name)
         MobileStation.__init__(self, [Isotropic([0,0,1.5])], _receiver,  None, parentLogger = parentLogger)
 
         self.logger = Logger("OFDMAPHY", name+".PHY.Scanner", True, parentLogger)
         self.nameInComponentFactory = 'ofdmaphy.Scanner'
+        self.rxFrequency = centerFrequency - 0.7812/2.0
