@@ -135,6 +135,9 @@ namespace ofdmaphy {
         onNewRSS(wns::Power rss);
 
         void
+        updateRequest();
+
+        void
         endTransmission(Transmission t);
 
         virtual rise::SystemManager*

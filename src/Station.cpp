@@ -306,6 +306,12 @@ Station::onNewRSS(wns::Power rss)
 
 }
 
+void
+Station::updateRequest()
+{
+    this->receiver->updateRequest();
+}
+
 std::map<wns::node::Interface*, wns::Ratio>
 Station::calculateSINRsRx(const std::vector<wns::node::Interface*>& combination,
                           wns::Power iInterPlusNoise)

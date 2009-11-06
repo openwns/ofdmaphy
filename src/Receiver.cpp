@@ -936,12 +936,26 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
 
         if (newReceivedSignalStrength != receivedSignalStrength)
         {
+            // the new signal strength is propagated with a delay
             receivedSignalStrength = newReceivedSignalStrength;
-            MESSAGE_SINGLE(NORMAL, logger, "notify: New carrier-sense of " << receivedSignalStrength);
-            this->wns::Subject<RSSInterface>::forEachObserver(OnNewRSS(receivedSignalStrength));
+            this->signalNewReceivedSignalStrength();
         }
     }
 } // Receiver::notify()
+
+void
+Receiver::signalNewReceivedSignalStrength()
+{
+    MESSAGE_SINGLE(NORMAL, logger, "notify: New carrier-sense of " << receivedSignalStrength);
+    this->wns::Subject<RSSInterface>::forEachObserver(OnNewRSS(receivedSignalStrength));
+}
+
+void
+Receiver::updateRequest()
+{
+    receivedSignalStrength = getAllRxPower();
+    this->wns::Subject<RSSInterface>::forEachObserver(OnNewRSS(receivedSignalStrength));
+}
 
 void
 Receiver::doMeasurementsNow()

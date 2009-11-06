@@ -300,6 +300,9 @@ namespace ofdmaphy {
         virtual void
         notify(rise::TransmissionObjectPtr t);
 
+        void
+        signalNewReceivedSignalStrength();
+
         /** @brief doMeasurementsNow is called in regular intervals */
         virtual void
         doMeasurementsNow();
@@ -326,6 +329,9 @@ namespace ofdmaphy {
         private:
             wns::Power rss;
         };
+
+        void
+        updateRequest();
 
         void
         insertReceivePattern(wns::node::Interface*, wns::service::phy::ofdma::PatternPtr);
