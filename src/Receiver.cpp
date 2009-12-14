@@ -800,7 +800,33 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
 {
 	// Do not receive from myself
     if(t->getTransmitter() == getOFDMAStation()->getTransmitter())
-        return;
+    {
+	    // For each started and stopped transmission, the Received Signal Strenght
+	    // (RSS) at the receiver changes. Upper FUs can observe the RSS to detect a
+	    // busy channel.
+	    // The signalling is made only if observers are present, as the operation
+	    // (adding dBm values) is costly and must be done for every packet at every receiver.
+	    if (this->wns::Subject<RSSInterface>::hasObservers())
+	    {
+	        // For getAllRxPower, the notify() comes always too early (see
+	        // rise::medium::PhysicalResource): first the receiver is notified, then
+	        // the transmission is added or removed. Hence, we have to add/substract the
+	        // new/old transmission. The mobility is not effected, as both
+	        // getAllRxPower() and getRxPower() return a 'snapshot' of now
+		if (t->getIsStart())
+			return;
+	        wns::Power newReceivedSignalStrength = getAllRxPower();
+	        assure(newReceivedSignalStrength > getRxPower(t), "receivedSignalStrength is too low for current ongoing	transmission\n");
+	        newReceivedSignalStrength -= getRxPower(t);
+	        if (newReceivedSignalStrength != receivedSignalStrength)
+	        {
+	            // the new signal strength is propagated with a delay
+	            receivedSignalStrength = newReceivedSignalStrength;
+	            this->signalNewReceivedSignalStrength();
+	        }
+	    }
+	    return;
+    }
 
     if (transmissionForMe(t))
     {
