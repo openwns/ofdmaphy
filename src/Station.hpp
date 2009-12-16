@@ -36,7 +36,6 @@
 #include <RISE/misc/pointer.hpp>
 #include <RISE/antenna/Beamforming.hpp>
 #include <RISE/manager/systemmanager.hpp>
-//#include <RISE/plmapping/PhyMode.hpp>
 
 #include <WNS/logger/Logger.hpp>
 #include <WNS/service/phy/ofdma/DataTransmission.hpp>
@@ -77,10 +76,10 @@ namespace ofdmaphy {
 
         friend class ofdmaphy::tests::TransmitterTest;
 
-        typedef rise::TransmissionObjectPtr Transmission;
-        typedef rise::BroadcastTransmissionObjectPtr Broadcast;
-        typedef rise::UnicastTransmissionObjectPtr Unicast;
-        typedef rise::BeamformingTransmissionObjectPtr BeamformingTransmission;
+        //typedef rise::TransmissionObjectPtr Transmission;
+        //typedef rise::BroadcastTransmissionObjectPtr Broadcast;
+        //typedef rise::UnicastTransmissionObjectPtr Unicast;
+        //typedef rise::BeamformingTransmissionObjectPtr BeamformingTransmission;
         typedef wns::service::phy::ofdma::BFIdu bFIdu;
 
     public:
@@ -90,37 +89,44 @@ namespace ofdmaphy {
         void
         onNodeCreated();
 
-        /** @todo obsolete interface if PhyMode is always specified */
-        virtual void
-        startBroadcast(wns::osi::PDUPtr sdu,
-                       int subBand,
-                       wns::Power requestedTxPower);
-
+        /** @brief Start a broadcast transmission of sdu */
         virtual void
         startBroadcast(wns::osi::PDUPtr sdu,
                        int subBand,
                        wns::Power requestedTxPower,
-                       //const wns::service::phy::phymode::PhyModeInterface& _phyMode);
+                       int numberOfSpatialStreams = 1);
+
+        /**
+         * @brief Start a single-stream broadcast transmission of sdu with
+         *        given phyMode
+         */
+        virtual void
+        startBroadcast(wns::osi::PDUPtr sdu,
+                       int subBand,
+                       wns::Power requestedTxPower,
                        wns::service::phy::phymode::PhyModeInterfacePtr _phyModePtr);
 
-        /** @todo obsolete interface if PhyMode is always specified */
-        virtual void
-        startUnicast(wns::osi::PDUPtr sdu,
-                     wns::node::Interface* _recipient,
-                     int subBand,
-                     wns::Power requestedTxPower);
-
+       /** @brief Start a unicast transmission of sdu */
         virtual void
         startUnicast(wns::osi::PDUPtr sdu,
                      wns::node::Interface* _recipient,
                      int subBand,
                      wns::Power requestedTxPower,
-                     //const wns::service::phy::phymode::PhyModeInterface& _phyMode);
+                     int numberOfSpatialStreams = 1);
+
+        /**
+         * @brief Start a single-stream unicast transmission of sdu with
+         *        given phyMode
+         */
+        virtual void
+        startUnicast(wns::osi::PDUPtr sdu,
+                     wns::node::Interface* _recipient,
+                     int subBand,
+                     wns::Power requestedTxPower,
                      wns::service::phy::phymode::PhyModeInterfacePtr _phyModePtr);
 
         virtual void
         stopTransmission(wns::osi::PDUPtr sdu, int subBand);
-        //parameter subBand is not used
 
         /** @brief receive sdu plus measurement information and delegate to Layer2 */
         void
@@ -138,7 +144,7 @@ namespace ofdmaphy {
         updateRequest();
 
         void
-        endTransmission(Transmission t);
+        endTransmission(rise::TransmissionObjectPtr t);
 
         virtual rise::SystemManager*
         getSystemManager() const;
@@ -176,13 +182,13 @@ namespace ofdmaphy {
         virtual double
         estimateDoA(wns::node::Interface *id);
 
-        /** @todo obsolete interface if PhyMode is always specified */
         virtual void
         startTransmission(wns::osi::PDUPtr pdu,
                           wns::node::Interface* _recipient,
                           int subBand,
                           wns::service::phy::ofdma::PatternPtr pattern,
-                          wns::Power requestedTxPower);
+                          wns::Power requestedTxPower,
+                          int numberOfSpatialStreams = 1);
 
         virtual void
         startTransmission(wns::osi::PDUPtr pdu,
@@ -190,7 +196,6 @@ namespace ofdmaphy {
                           int subBand,
                           wns::service::phy::ofdma::PatternPtr pattern,
                           wns::Power requestedTxPower,
-                          //const wns::service::phy::phymode::PhyModeInterface& _phyMode);
                           wns::service::phy::phymode::PhyModeInterfacePtr _phyModePtr);
 
         virtual bool
@@ -290,6 +295,10 @@ namespace ofdmaphy {
         admit(const wns::Power& requestedPower) const;
 
     private:
+
+        void
+        startTransmitting(wns::osi::PDUPtr sdu, rise::TransmissionObjectPtr txObject, int subBand);
+
         wns::logger::Logger logger;
         SystemManager* systemManager;
         Transmitter<Station>* transmitter;
@@ -307,7 +316,7 @@ namespace ofdmaphy {
 
         rise::antenna::Beamforming* beamformingAntenna;
         bool supportsBeamforming;
-        std::map<wns::osi::PDUPtr, Transmission> activeTransmissions;
+        std::map<wns::osi::PDUPtr, rise::TransmissionObjectPtr> activeTransmissions;
         wns::service::phy::ofdma::Handler* handler;
         wns::service::phy::ofdma::RSSHandler* rssHandler;
         wns::service::phy::ofdma::MeasurementHandler* measurementHandler;

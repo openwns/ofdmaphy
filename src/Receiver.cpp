@@ -527,7 +527,7 @@ wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::servi
     MESSAGE_SINGLE(NORMAL,logger, "TxPower: " << rxPower);
 
     wns::Ratio fullPathLoss = getFullPathLoss(t,pattern);
-    MESSAGE_SINGLE(NORMAL, logger, "PathLoss FUll (inside getRxPower) " << fullPathLoss );
+    MESSAGE_SINGLE(NORMAL, logger, "PathLoss Full (inside getRxPower) " << fullPathLoss );
 
     rxPower -= fullPathLoss;
     MESSAGE_SINGLE(NORMAL,logger, "RxPower: " << rxPower);
@@ -876,33 +876,21 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                 // pass received thing upwards in the stack:
                 Station* ofdmaStation = getOFDMAStation();
 
-                //const wns::service::phy::phymode::PhyModeInterface& transmissionObject->getPhyMode();
-
-                // obsolete [rs]:
-                //ofdmaStation->receiveData(t->getPayload(), getAveragedRxPower(t), getAveragedInterference(t), omniAttenuation);
-                /* [rs] new code using PowerMeasurementPtr */
-                wns::Power rxPower = getAveragedRxPower(t); // inherited from rise::receiver::TimeWeightedTransmissionAveraging
-                wns::Power interference = getAveragedInterference(t);
-                int subChannelIndex = getSubCarrierIndex(t->getPhysicalResource()->getFrequency());
-
                 if (doMeasurementUpdates)
-                { // the periodic "big" ones
+                {
+                    // the periodic "big" ones
                     wns::Ratio pathLoss = getQuasiStaticPathLoss(t, getCurrentReceivePattern(t)); // determine (again)
                     saveMeasuredFlatPathloss(sourceNode,pathLoss);
-                    //saveMeasuredInterference(sourceNode,subChannelIndex,getAveragedInterference(t));
                 }
-                //MESSAGE_SINGLE(NORMAL, logger,
-                //"ofdmaphy::Receiver::receiveData(): preparing
-                //PowerMeasurementPtr");
 
                 wns::service::phy::power::PowerMeasurementPtr rxPowerMeasurementPtr =
                     wns::SmartPtr<rise::receiver::PowerMeasurement>
                     (new rise::receiver::PowerMeasurement(t,
                                                           sourceNode,
-                                                          rxPower,
-                                                          interference,
+                                                          getAveragedRxPower(t),
+                                                          getAveragedInterference(t),
                                                           omniAttenuation,
-                                                          subChannelIndex)
+                                                          getSubCarrierIndex(t->getPhysicalResource()->getFrequency()))
                         );
                 MESSAGE_SINGLE(NORMAL, logger, "PowerMeasurement="<<*rxPowerMeasurementPtr);
                 ofdmaStation->receiveData(/* sdu */t->getPayload(), rxPowerMeasurementPtr);

@@ -165,28 +165,47 @@ Station::onNodeCreated()
 void
 Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedPower, wns::service::phy::phymode::PhyModeInterfacePtr phyModePtr)
 {
-	// check the requested txPower (per subBand) (and modify if needed)
-	wns::Power txPower = this->powerAdmission->admit(requestedPower);
-	assure(phyModePtr,"phyModePtr==NULL");
+    // check the requested txPower (per subBand) (and modify if needed)
+    wns::Power txPower = this->powerAdmission->admit(requestedPower);
+    assure(phyModePtr,"phyModePtr==NULL");
 
-	// broadcast transmission (non-beamforming with static antenna)
-	Broadcast bto(new rise::BroadcastTransmissionObject(transmitter,
-							    sdu,
-							    txPower,
-								phyModePtr,
-							    uint32_t(1)));
+    // broadcast transmission (non-beamforming with static antenna)
+    rise::BroadcastTransmissionObjectPtr bto(
+        new rise::BroadcastTransmissionObject(transmitter,
+                                              sdu,
+                                              txPower,
+                                              phyModePtr,
+                                              uint32_t(1)));
 
- 	MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startBroadcast(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<") Broadcast");
-	transmitter->startTransmitting(bto, subBand);
-	assure(activeTransmissions.find(sdu) == activeTransmissions.end(), "Transmission for this PDU already active");
-	activeTransmissions[sdu]= bto;
+    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startBroadcast(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<")");
+    this->startTransmitting(sdu, bto, subBand);
 }
 
 void
-Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedPower)
+Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedPower, int numberOfSpatialStreams)
 {
- 	MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Station::startBroadcast(): WARNING: using old interface without PhyMode");
-	startBroadcast(sdu, subBand, requestedPower, wns::service::phy::phymode::emptyPhyModePtr());
+    // check the requested txPower (per subBand) (and modify if needed)
+    wns::Power txPower = this->powerAdmission->admit(requestedPower);
+
+    rise::BroadcastTransmissionObjectPtr bto(
+        new rise::BroadcastTransmissionObject(transmitter,
+                                              sdu,
+                                              txPower,
+                                              1,
+                                              numberOfSpatialStreams));
+
+    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startBroadcast(subBand="<<subBand<<",P="<<txPower<<",numSS="<<numberOfSpatialStreams<<")");
+    this->startTransmitting(sdu, bto, subBand);
+}
+
+void
+Station::startTransmitting(wns::osi::PDUPtr sdu, rise::TransmissionObjectPtr txObject, int subBand)
+{
+    assure(activeTransmissions.find(sdu) == activeTransmissions.end(), 
+           "Transmission for this PDU already active");
+
+    transmitter->startTransmitting(txObject, subBand);
+    activeTransmissions[sdu] = txObject;
 }
 
 void
@@ -201,25 +220,32 @@ Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, in
 
 	Station* recipient = systemManager->getStation(_recipient);
 
-	Unicast uto =
-		Unicast(new rise::UnicastTransmissionObject(transmitter,
-								 recipient->receiver,
-								 uint32_t(1),
-								 sdu,
-								 txPower,
-								 phyModePtr));
- 	MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startUnicast(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<")");
-	// call RISE transmitter
-	transmitter->startTransmitting(uto, subBand);
-	assure(activeTransmissions.find(sdu) == activeTransmissions.end(), "Transmission for this PDU already active");
-	activeTransmissions[sdu]= uto;
+	rise::UnicastTransmissionObjectPtr uto(new rise::UnicastTransmissionObject(transmitter,
+                                                                               recipient->receiver,
+                                                                               uint32_t(1),
+                                                                               sdu,
+                                                                               txPower,
+                                                                               phyModePtr));
+    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startUnicast(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<")");
+    this->startTransmitting(sdu, uto, subBand);
 }
 
 void
-Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, int subBand, wns::Power requestedPower)
+Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, int subBand, wns::Power requestedPower, int numberOfSpatialStreams)
 {
- 	MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Station::startUnicast(): WARNING: using old interface without PhyMode");
-	startUnicast(sdu, _recipient, subBand, requestedPower, wns::service::phy::phymode::emptyPhyModePtr());
+    assure(_recipient != NULL, "Invalid Recipient");
+    wns::Power txPower = powerAdmission->admit(requestedPower);
+    Station* recipient = systemManager->getStation(_recipient);
+
+    rise::UnicastTransmissionObjectPtr uto(new rise::UnicastTransmissionObject(transmitter,
+                                                                               recipient->receiver,
+                                                                               1,
+                                                                               sdu,
+                                                                               txPower,
+                                                                               numberOfSpatialStreams));
+
+    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startUnicast(subBand="<<subBand<<",P="<<txPower<<",numSS="<<numberOfSpatialStreams<<")");
+    this->startTransmitting(sdu, uto, subBand);
 }
 
 void
@@ -233,11 +259,11 @@ Station::stopTransmission(wns::osi::PDUPtr sdu, int
 	assure(activeTransmissions.find(sdu)->second->getPayload() == sdu, "Wrong pdu"); // hoy:???
 
  	MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::stopTransmission(subBand=" << subBand << ")");
-	std::map<wns::osi::PDUPtr, Transmission>::iterator itr = activeTransmissions.find(sdu);
+	std::map<wns::osi::PDUPtr, rise::TransmissionObjectPtr>::iterator itr = activeTransmissions.find(sdu);
 
 	// Remove transmission
 	// Transmission is a SmartPtr -> Transmission() creates NULL pointer
-	Transmission t = itr->second;
+	rise::TransmissionObjectPtr t = itr->second;
 	activeTransmissions.erase(itr);
 
 	transmitter->stopTransmitting(t);
@@ -250,7 +276,7 @@ Station::getCurrentCandI(wns::osi::PDUPtr sdu)
 	assure(activeTransmissions.find(sdu) != activeTransmissions.end(), "No active transmission with this PDU");
 	assure(activeTransmissions.find(sdu)->second->getPayload() == sdu, "Wrong pdu"); // hoy:???
 
-	std::map<wns::osi::PDUPtr, Transmission>::iterator itr = activeTransmissions.find(sdu);
+	std::map<wns::osi::PDUPtr, rise::TransmissionObjectPtr>::iterator itr = activeTransmissions.find(sdu);
 	wns::CandI candi;
 
 	candi.I = wns::dynamicCast<rise::UnicastTransmissionObject, rise::TransmissionObject>(itr->second)->getReceiver()->getInterference(itr->second);
@@ -467,20 +493,16 @@ Station::startTransmission(wns::osi::PDUPtr sdu,
 
     Station* recipient = systemManager->getStation(_recipient);
 
-    BeamformingTransmission bfto =
-        BeamformingTransmission(new rise::TransmissionObjectBF(transmitter,
-                                                               recipient->receiver,
-                                                               this->getBFAntenna(),
-                                                               sdu,
-                                                               requestedTxPower,
-                                                               phyModePtr,
-                                                               pattern,
-                                                               uint32_t(1)));
+    rise::BeamformingTransmissionObjectPtr bfto(new rise::TransmissionObjectBF(transmitter,
+                                                                               recipient->receiver,
+                                                                               this->getBFAntenna(),
+                                                                               sdu,
+                                                                               requestedTxPower,
+                                                                               phyModePtr,
+                                                                               pattern,
+                                                                               uint32_t(1)));
     MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startTransmissions(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<") BF");
-    transmitter->startTransmitting(bfto, subBand);
-
-    assure(activeTransmissions.find(sdu) == activeTransmissions.end(), "Transmission for this PDU already active");
-    activeTransmissions[sdu] = bfto;
+    this->startTransmitting(sdu, bfto, subBand);
 
     // Write Pattern to output file
     MESSAGE_BEGIN(NORMAL, logger, m, "Drawing radiation Pattern for transmission from ");
@@ -495,10 +517,44 @@ Station::startTransmission(wns::osi::PDUPtr sdu,
                            wns::node::Interface* _recipient,
                            int subBand,
                            wns::service::phy::ofdma::PatternPtr pattern,
-                           wns::Power requestedTxPower)
+                           wns::Power requestedTxPower,
+                           int numberOfSpatialStreams)
 {
-    MESSAGE_SINGLE(VERBOSE, logger, "ofdmaphy::Station::startTransmission(): WARNING: using old interface without PhyMode");
-    startTransmission(sdu, _recipient, subBand, pattern, requestedTxPower, wns::service::phy::phymode::emptyPhyModePtr());
+    // unicast beamforming transmission with beamforming antenna
+    assure( supportsBeamforming, "Beamforming not supported in current configuration" );
+    assure( beamformingAntenna , "No Beamforming Antenna present");
+    assure(_recipient != NULL, "Invalid Recipient");
+    assure(pattern != wns::service::phy::ofdma::PatternPtr(), "not a valid pattern");
+
+
+    // check the requested txPower (and modify if needed)
+    wns::Power txPower = powerAdmission->admit(requestedTxPower);
+
+    MESSAGE_BEGIN(NORMAL, logger, m, "new PDU with txPower of ");
+    m << requestedTxPower.get_dBm();
+    m << " dBm, \n the current sum Tx power is " << this->getSumPower().get_dBm();
+    m << " dBm, \n the available total Tx power is " << this->getMaxOutputPower().get_dBm() << "dBm";
+    MESSAGE_END();
+
+    Station* recipient = systemManager->getStation(_recipient);
+
+    rise::BeamformingTransmissionObjectPtr bfto(new rise::TransmissionObjectBF(transmitter,
+                                                                               recipient->receiver,
+                                                                               this->getBFAntenna(),
+                                                                               sdu,
+                                                                               requestedTxPower,
+                                                                               pattern,
+                                                                               uint32_t(1),
+                                                                               numberOfSpatialStreams));
+    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startTransmissions(subBand="<<subBand<<",P="<<txPower<<",numSS="<<numberOfSpatialStreams<<") BF");
+    this->startTransmitting(sdu, bfto, subBand);
+
+    // Write Pattern to output file
+    MESSAGE_BEGIN(NORMAL, logger, m, "Drawing radiation Pattern for transmission from ");
+    m << this->getNode()->getName() << " to " << _recipient->getName();
+    std::string fileName = std::string("patterns/")+this->getNode()->getName()+"_"+_recipient->getName()+".pattern";
+    this->getBFAntenna()->drawRadiationPattern(fileName, pattern);
+    MESSAGE_END();
 }
 
 bool
@@ -649,7 +705,7 @@ wns::Power
 Station::getSumPower() const
 {
     wns::Power sumPower = wns::Power().from_mW(0.0);
-    for ( std::map<wns::osi::PDUPtr, Transmission>::const_iterator itr = activeTransmissions.begin();
+    for ( std::map<wns::osi::PDUPtr, rise::TransmissionObjectPtr>::const_iterator itr = activeTransmissions.begin();
           itr!= activeTransmissions.end();
           itr++)
     {
