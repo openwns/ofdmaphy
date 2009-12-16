@@ -67,14 +67,13 @@ class OFDMAStation(MobileStation):
 
     def __init__(self, _receiver, _transmitter, parentLogger = None, eirpLimited = False, noOfAntenna = 1, arrayLayout = "linear", positionErrorVariance = 0.0):
         super(OFDMAStation, self).__init__([Isotropic([0,0,1.5])], _receiver, _transmitter, parentLogger = parentLogger)
-        #self.beamformingAntenna = BFAntenna(noOfAntenna, [0,0,1.5], arrayLayout, positionErrorVariance)
         self.systemManagerName = "ofdma"
         self.eirpLimited = eirpLimited
         self.numAntennas = noOfAntenna
 
 
 class OFDMAStationDropIn(OFDMAStation):
-
+    """ This class is only for the OFDMA Test """
     def __init__(self, parentLogger = None):
         super(OFDMAStationDropIn, self).__init__([ReceiverDropIn()], [TransmitterDropIn()], parentLogger)
         self.logger = Logger("RISE", "PHY.StationDropIn", True, parentLogger)
@@ -83,6 +82,7 @@ class OFDMAStationDropIn(OFDMAStation):
         self.rxFrequency = 1
         self.numberOfSubCarrier = 1
         self.txPower = "20 dBm"
+        self.beamformingAntenna = BFAntenna(4, [0,0,1.5], "linear", 0.0)
         self.systemManagerName = "OFDMATest"
 
 
