@@ -48,7 +48,7 @@ STATIC_FACTORY_REGISTER_WITH_CREATOR(
 	);
 
 Scanner::Receiver::Receiver(const wns::pyconfig::View& config, Scanner* s) :
-	ofdmaphy::Receiver(config, s),
+    ofdmaphy::receiver::Receiver(config, s),
 	scanner(s),
 	bsID(0)
 {
@@ -69,7 +69,7 @@ Scanner::Receiver::notify(rise::TransmissionObjectPtr to)
 void
 Scanner::Receiver::positionChanged()
 {
-	ofdmaphy::Receiver::positionChanged();
+    ofdmaphy::receiver::Receiver::positionChanged();
 
 	for (TOList::const_iterator itr = transmissions.begin();
 		 itr != transmissions.end();
@@ -105,7 +105,7 @@ Scanner::Receiver::positionChanged()
 wns::Power
 Scanner::Receiver::getRxPower(const rise::TransmissionObjectPtr& to)
 {
-	return ofdmaphy::Receiver::getRxPower(to, wns::service::phy::ofdma::PatternPtr());
+    return ofdmaphy::receiver::Receiver::getRxPower(to, wns::service::phy::ofdma::PatternPtr());
 }
 
 wns::service::phy::ofdma::PatternPtr

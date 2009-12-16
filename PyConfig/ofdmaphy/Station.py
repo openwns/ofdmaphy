@@ -63,12 +63,14 @@ class OFDMAStation(MobileStation):
     totalPower = "50.0 dBm" # theoretical maximum, re-set it to a suitable value for your station
     eirpLimited = None
     systemManagerName = None
+    numAntennas = None
 
-    def __init__(self, _receiver, _transmitter, parentLogger = None, eirpLimited = False, noOfAntenna = 4, arrayLayout = "linear", positionErrorVariance = 0.0):
+    def __init__(self, _receiver, _transmitter, parentLogger = None, eirpLimited = False, noOfAntenna = 1, arrayLayout = "linear", positionErrorVariance = 0.0):
         super(OFDMAStation, self).__init__([Isotropic([0,0,1.5])], _receiver, _transmitter, parentLogger = parentLogger)
-        self.beamformingAntenna = BFAntenna(noOfAntenna, [0,0,1.5], arrayLayout, positionErrorVariance)
+        #self.beamformingAntenna = BFAntenna(noOfAntenna, [0,0,1.5], arrayLayout, positionErrorVariance)
         self.systemManagerName = "ofdma"
         self.eirpLimited = eirpLimited
+        self.numAntennas = noOfAntenna
 
 
 class OFDMAStationDropIn(OFDMAStation):
@@ -121,3 +123,4 @@ class Scanner(MobileStation, openwns.node.Component):
 
         self.logger = Logger("OFDMAPHY", name+".PHY.Scanner", True, parentLogger)
         self.nameInComponentFactory = 'ofdmaphy.Scanner'
+        self.rxFrequency = centerFrequency - 0.7812/2.0

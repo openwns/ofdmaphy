@@ -27,7 +27,7 @@
 
 #include <OFDMAPHY/Station.hpp>
 #include <OFDMAPHY/Manager.hpp>
-#include <OFDMAPHY/Receiver.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
 #include <OFDMAPHY/Component.hpp>
 
 #include <RISE/scenario/Scenario.hpp>
@@ -48,8 +48,8 @@ using namespace ofdmaphy;
 // a new Station is created in constructor of ofdmaphy::Component
 Station::Station(Component* _component, const wns::pyconfig::View& pyConfigView) :
     rise::Station(pyConfigView),
-    //log("Station"),
     eirpLimited(pyConfigView.get<bool>("eirpLimited")),
+    numAntennas(pyConfigView.get<int>("numAntennas")),
     logger(pyConfigView.get("logger")),
     systemManager(dynamic_cast<SystemManager*>(rise::MetaSystemManager::getInstance()->getSystemManagerBySystemName(pyConfigView.get<std::string>("systemManagerName")))),
     transmitter(NULL),
@@ -84,7 +84,7 @@ Station::Station(Component* _component, const wns::pyconfig::View& pyConfigView)
     assure(pyConfigView.len("receiver") == 1,
            "Only one receiver supported at the moment!");
 
-    this->receiver = new Receiver(pyConfigView.getView("receiver", 0), this);
+    this->receiver = new receiver::Receiver(pyConfigView.getView("receiver", 0), this);
     this->transmitter = new Transmitter<Station>(pyConfigView.getView("transmitter", 0), this, getAntenna());
 
     double txFrequency = pyConfigView.get<double>("txFrequency");
@@ -103,20 +103,17 @@ Station::Station(Component* _component, const wns::pyconfig::View& pyConfigView)
     this->setRxTune( tuneRx );
     this->setTxTune( tuneTx );
 
-    // Start to observe the receiver for onNewRSS calls
-    //this->wns::Observer<RSSInterface>::startObserving(receiver);
-
     MESSAGE_BEGIN(NORMAL, logger, m, "ofdmaphy::Station constructed: ");
     m << "#SC="<<numberOfSubCarrier
-	  <<", fTx="<<txFrequency
-	  <<", fRx="<<rxFrequency
-	  <<", b="<<bandwidth
-	  <<", Ptotal="<<totalPower
-	  <<", PmaxSubband="<<maxTxPowerPerSubband;
-	  // TODO: nominal power per subBand?
+      <<", fTx="<<txFrequency
+      <<", fRx="<<rxFrequency
+      <<", b="<<bandwidth
+      <<", Ptotal="<<totalPower
+      <<", PmaxSubband="<<maxTxPowerPerSubband;
+    // TODO: nominal power per subBand?
     MESSAGE_END();
 
-	assure(maxTxPowerPerSubband <= totalPower, "Inconsistent txPower settings.");
+    assure(maxTxPowerPerSubband <= totalPower, "Inconsistent txPower settings.");
 
 }
 
@@ -184,6 +181,8 @@ Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedP
 void
 Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedPower, int numberOfSpatialStreams)
 {
+    assure(numberOfSpatialStreams <= this->numAntennas,
+           "Cannot transmit " << numberOfSpatialStreams << " with only " << numAntennas << " antennas");
     // check the requested txPower (per subBand) (and modify if needed)
     wns::Power txPower = this->powerAdmission->admit(requestedPower);
 
@@ -233,6 +232,8 @@ Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, in
 void
 Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, int subBand, wns::Power requestedPower, int numberOfSpatialStreams)
 {
+    assure(numberOfSpatialStreams <= this->numAntennas,
+           "Cannot transmit " << numberOfSpatialStreams << " with only " << numAntennas << " antennas");
     assure(_recipient != NULL, "Invalid Recipient");
     wns::Power txPower = powerAdmission->admit(requestedPower);
     Station* recipient = systemManager->getStation(_recipient);

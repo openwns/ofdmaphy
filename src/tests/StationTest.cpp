@@ -28,7 +28,7 @@
 #include <OFDMAPHY/tests/SystemManagerDropIn.hpp>
 #include <OFDMAPHY/tests/OFDMAStationDropIn.hpp>
 #include <OFDMAPHY/Transmitter.hpp>
-#include <OFDMAPHY/Receiver.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
 
 #include <RISE/medium/Medium.hpp>
 
@@ -46,7 +46,7 @@ namespace ofdmaphy { namespace tests {
 
 		SystemManagerDropIn* systemManagerDropIn;
 		OFDMAStationDropIn* station1;
-		Receiver* ofdma1;
+        receiver::Receiver* ofdma1;
 		Transmitter* trans1;
 	public:
 		StationTest(){};
@@ -57,7 +57,7 @@ namespace ofdmaphy { namespace tests {
 			rise::medium::Medium::getInstance()->reset();
 			systemManagerDropIn = new SystemManagerDropIn();
 			station1 = new OFDMAStationDropIn(systemManagerDropIn);
-			ofdma1   = new Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
+            ofdma1   = new receiver::Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
 						station1);
 			trans1   = new Transmitter(wns::pyconfig::helper::createViewFromDropInConfig("rise.Transmitter", "TransmitterDropIn"), 
 						   station1, station1->getAntenna());

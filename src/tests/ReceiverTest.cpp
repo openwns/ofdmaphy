@@ -78,11 +78,11 @@ void OFDMATest::prepare()
  	station2 = new OFDMAStationDropIn(systemManagerDropIn);
  	station3 = new OFDMAStationDropIn(systemManagerDropIn);
  	station4 = new OFDMAStationDropIn(systemManagerDropIn);
-	ofdma1   = new Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
+	ofdma1   = new receiver::Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
 				station1);
-	ofdma2   = new Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
+	ofdma2   = new receiver::Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
 				station2);
-	ofdma3   = new Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
+	ofdma3   = new receiver::Receiver(wns::pyconfig::helper::createViewFromDropInConfig("ofdmaphy.Receiver", "ReceiverDropIn"),
 				station3);
 	trans1   = new Transmitter(wns::pyconfig::helper::createViewFromDropInConfig("rise.Transmitter", "TransmitterDropIn"), station1, station1->getAntenna());
  	trans2   = new Transmitter(wns::pyconfig::helper::createViewFromDropInConfig("rise.Transmitter", "TransmitterDropIn"), station2, station2->getAntenna());

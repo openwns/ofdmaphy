@@ -25,49 +25,37 @@
  *
  ******************************************************************************/
 
-#ifndef OFDMAPHY_TESTS_OFDMATRANSMITTERTEST_HPP
-#define OFDMAPHY_TESTS_OFDMATRANSMITTERTEST_HPP
+#ifndef OFDMAPHY_RECEIVER_MIMO_NOCORRELATIONZF_HPP
+#define OFDMAPHY_RECEIVER_MIMO_NOCORRELATIONZF_HPP
 
-#include <OFDMAPHY/tests/SystemManagerDropIn.hpp>
-#include <OFDMAPHY/tests/OFDMAStationDropIn.hpp>
-#include <OFDMAPHY/Transmitter.hpp>
-#include <OFDMAPHY/receiver/Receiver.hpp>
+#include <OFDMAPHY/receiver/mimo/ICalculationStrategy.hpp>
 
-#include <WNS/node/Node.hpp>
-#include <WNS/service/phy/ofdma/DataTransmission.hpp>
-#include <WNS/TestFixture.hpp>
+namespace ofdmaphy { namespace receiver { namespace mimo {
 
-namespace ofdmaphy { namespace tests {
-	class TransmitterTest
-		: public wns::TestFixture
-	{
-		CPPUNIT_TEST_SUITE( TransmitterTest );
+    /**
+	 * @brief No correlation between antennas at all
+	 */
+    class NoCorrelationZF :
+        public ICalculationStrategy
+    {
 
-		CPPUNIT_TEST( testGetRxPowerBF );
-		CPPUNIT_TEST( testAnalogToBeamformingTest );
-		CPPUNIT_TEST_SUITE_END();
-	public:
-		TransmitterTest();
-		~TransmitterTest();
-		void prepare();
-		void cleanup();
-		void testGetRxPowerBF();
-		void testAnalogToBeamformingTest();
-	private:
-		SystemManagerDropIn* systemManagerDropIn;
-		OFDMAStationDropIn* station1;
- 		OFDMAStationDropIn* station2;
- 		OFDMAStationDropIn* station3;
- 		OFDMAStationDropIn* station4;
-        receiver::Receiver* ofdma1;
- 		receiver::Receiver* ofdma2;
- 		receiver::Receiver* ofdma3;
-		Transmitter* trans1;
- 		Transmitter* trans2;
- 		Transmitter* trans3;
-	};
-}}
+    public:
+        NoCorrelationZF(const wns::pyconfig::View&,
+                        Receiver* rx,
+                        wns::logger::Logger*);
 
-#endif // OFDMAPHY_TESTS_TRANSMITTERTEST_HPP
+        virtual std::vector<wns::Ratio>
+        getPostProcessingSINRFactor(rise::TransmissionObjectPtr t);
+
+    private:
+        wns::logger::Logger* logger;
+        const Receiver* rx;
+
+    };
+}
+}
+}
+#endif // not defined __RISE_OFDMA_HPP
+
 
 

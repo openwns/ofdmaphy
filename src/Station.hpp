@@ -50,7 +50,9 @@
 
 namespace ofdmaphy {
     class SystemManager;
-    class Receiver;
+    namespace receiver {
+        class Receiver;
+    }
     class Component;
 
     namespace tests { class TransmitterTest;}
@@ -76,10 +78,6 @@ namespace ofdmaphy {
 
         friend class ofdmaphy::tests::TransmitterTest;
 
-        //typedef rise::TransmissionObjectPtr Transmission;
-        //typedef rise::BroadcastTransmissionObjectPtr Broadcast;
-        //typedef rise::UnicastTransmissionObjectPtr Unicast;
-        //typedef rise::BeamformingTransmissionObjectPtr BeamformingTransmission;
         typedef wns::service::phy::ofdma::BFIdu bFIdu;
 
     public:
@@ -275,11 +273,17 @@ namespace ofdmaphy {
         bool
         beamformingEnabled() const;
 
-        Receiver* 
+        receiver::Receiver*
         getReceiver(){return receiver;};
 
-        Transmitter<Station>* 
+        Transmitter<Station>*
         getTransmitter(){return transmitter;};
+
+        virtual int
+        getNumAntennas() const
+            {
+                return this->numAntennas;
+            };
 
     protected:
         bool eirpLimited;
@@ -302,13 +306,16 @@ namespace ofdmaphy {
         wns::logger::Logger logger;
         SystemManager* systemManager;
         Transmitter<Station>* transmitter;
-        Receiver* receiver;
+        receiver::Receiver* receiver;
         PowerAdmissionInterface* powerAdmission;
         // maximum Tx power of the OFDMA station
         // reduced tx power allowed, e.g., controlled by DLL-based power control
         // wns::Power txPower;
         wns::Power maxTxPowerPerSubband;
         wns::Power totalPower; // for all subBands; typ. 1..40W
+
+        /** @brief Number of antennas for MIMO */
+        const int numAntennas;
 
         wns::service::phy::ofdma::Tune tuneRx;
         wns::service::phy::ofdma::Tune tuneTx;

@@ -28,7 +28,7 @@
 #ifndef OFDMAPHY_SCANNER_HPP
 #define OFDMAPHY_SCANNER_HPP
 
-#include <OFDMAPHY/Receiver.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
 
 #include <RISE/antenna/Antenna.hpp>
 #include <RISE/stations/station.hpp>
@@ -48,7 +48,7 @@ namespace ofdmaphy {
 		typedef rise::BroadcastTransmissionObjectPtr Broadcast;
 
 		class Receiver :
-			public ofdmaphy::Receiver
+            public ofdmaphy::receiver::Receiver
 		{
 			typedef std::list<rise::TransmissionObjectPtr> TOList;
 		public:

@@ -25,49 +25,20 @@
  *
  ******************************************************************************/
 
-#ifndef OFDMAPHY_TESTS_OFDMATRANSMITTERTEST_HPP
-#define OFDMAPHY_TESTS_OFDMATRANSMITTERTEST_HPP
+#include <OFDMAPHY/receiver/ReceiverBase.hpp>
 
-#include <OFDMAPHY/tests/SystemManagerDropIn.hpp>
-#include <OFDMAPHY/tests/OFDMAStationDropIn.hpp>
-#include <OFDMAPHY/Transmitter.hpp>
-#include <OFDMAPHY/receiver/Receiver.hpp>
+using namespace ofdmaphy::receiver;
 
-#include <WNS/node/Node.hpp>
-#include <WNS/service/phy/ofdma/DataTransmission.hpp>
-#include <WNS/TestFixture.hpp>
+ReceiverBase::ReceiverBase()
+{
+}
 
-namespace ofdmaphy { namespace tests {
-	class TransmitterTest
-		: public wns::TestFixture
-	{
-		CPPUNIT_TEST_SUITE( TransmitterTest );
+ReceiverBase::ReceiverBase(const wns::pyconfig::View& config) :
+    logger(config.getView("logger"))
+{
+    assure(logger.getModuleName().compare("unspecified")!=0,"logger problem");
+}
 
-		CPPUNIT_TEST( testGetRxPowerBF );
-		CPPUNIT_TEST( testAnalogToBeamformingTest );
-		CPPUNIT_TEST_SUITE_END();
-	public:
-		TransmitterTest();
-		~TransmitterTest();
-		void prepare();
-		void cleanup();
-		void testGetRxPowerBF();
-		void testAnalogToBeamformingTest();
-	private:
-		SystemManagerDropIn* systemManagerDropIn;
-		OFDMAStationDropIn* station1;
- 		OFDMAStationDropIn* station2;
- 		OFDMAStationDropIn* station3;
- 		OFDMAStationDropIn* station4;
-        receiver::Receiver* ofdma1;
- 		receiver::Receiver* ofdma2;
- 		receiver::Receiver* ofdma3;
-		Transmitter* trans1;
- 		Transmitter* trans2;
- 		Transmitter* trans3;
-	};
-}}
-
-#endif // OFDMAPHY_TESTS_TRANSMITTERTEST_HPP
-
-
+ReceiverBase::~ReceiverBase()
+{
+}

@@ -31,7 +31,7 @@
 #include <OFDMAPHY/tests/SystemManagerDropIn.hpp>
 #include <OFDMAPHY/tests/OFDMAStationDropIn.hpp>
 #include <OFDMAPHY/Transmitter.hpp>
-#include <OFDMAPHY/Receiver.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
 
 #include <WNS/node/Node.hpp>
 #include <WNS/TestFixture.hpp>
@@ -74,9 +74,9 @@ namespace ofdmaphy { namespace tests {
  		OFDMAStationDropIn* station2;
  		OFDMAStationDropIn* station3;
  		OFDMAStationDropIn* station4;
-		Receiver* ofdma1;
- 		Receiver* ofdma2;
- 		Receiver* ofdma3;
+        receiver::Receiver* ofdma1;
+ 		receiver::Receiver* ofdma2;
+ 		receiver::Receiver* ofdma3;
 		Transmitter* trans1;
  		Transmitter* trans2;
  		Transmitter* trans3;

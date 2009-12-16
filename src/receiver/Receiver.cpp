@@ -25,345 +25,21 @@
  *
  ******************************************************************************/
 
-#include <OFDMAPHY/Receiver.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
+
 #include <OFDMAPHY/Station.hpp>
 #include <OFDMAPHY/Sender.hpp>
+#include <OFDMAPHY/OFDMAMeasurement.hpp>
 
-#include <RISE/medium/Medium.hpp>
 #include <RISE/medium/PhysicalResource.hpp>
 #include <RISE/scenario/Scenario.hpp>
-#include <RISE/manager/systemmanager.hpp>
-#include <RISE/antenna/Antenna.hpp>
 #include <RISE/transceiver/transmitter.hpp>
 #include <RISE/transceiver/cache/idvectorcache.hpp>
-
-#include <WNS/probe/bus/ProbeBus.hpp>
-#include <WNS/probe/bus/ProbeBusRegistry.hpp>
-#include <WNS/probe/bus/ContextCollector.hpp>
+#include <RISE/receiver/PowerMeasurement.hpp>
 
 #include <valarray>
 
-using namespace ofdmaphy;
-
-ReceiverBase::ReceiverBase()
-{
-}
-
-ReceiverBase::ReceiverBase(const wns::pyconfig::View& config) :
-    logger(config.getView("logger"))
-    //nSectors(config.get<int>("nSectors"))
-{
-    assure(logger.getModuleName().compare("unspecified")!=0,"logger problem");
-    //std::cout << "ReceiverBase.logger: "<<logger.getModuleName()<<"."<<logger.getLoggerName()<<std::endl;
-}
-
-ReceiverBase::~ReceiverBase()
-{
-}
-
-OFDMAAspect::OFDMAAspect(wns::Ratio rnf) :
-    physicalResources(),
-    receiverNoiseFigure(rnf),
-    currentNumberOfSubCarriers(0),
-    carrierBandwidth(0.0),
-    lowestFrequency(0.0),
-    firstCarrierMidFrequency(0.0)
-{
-}
-
-void OFDMAAspect::tune(double f, double b, int numberOfSubCarriers)
-{
-    while(!physicalResources.empty())
-    {
-        (*physicalResources.begin())->detach(this);
-        physicalResources.erase(physicalResources.begin());
-    }
-
-    assure(physicalResources.empty(), "Tuning not possible. Receiver is already tuned!");
-
-    currentNumberOfSubCarriers = numberOfSubCarriers;
-    carrierBandwidth = b/numberOfSubCarriers;
-    lowestFrequency = f - b/2;
-    firstCarrierMidFrequency = lowestFrequency + carrierBandwidth/2;
-
-    // allocate physicalResources for all subCarriers:
-    for(int32_t i=0; i<numberOfSubCarriers; ++i) 
-    {
-        double midFrequency = firstCarrierMidFrequency + i*carrierBandwidth;
-        rise::medium::Medium* m = rise::medium::Medium::getInstance();
-        rise::medium::PhysicalResource* p = m->getPhysicalResource(midFrequency, carrierBandwidth);
-        physicalResources.push_back(p);
-        p->attach(this);
-    }
-}
-
-wns::Power OFDMAAspect::getNoise(int subCarrier) const
-{
-    assure(subCarrier >= 0, "No negative numbers for subCarrier allowed");
-    assure(subCarrier < currentNumberOfSubCarriers, "No such subCarrier! Too high!");
-    assure(subCarrier < (int)physicalResources.size(), "No such subCarrier! Too high!");
-
-    return getNoisePerSubChannel(); // faster
-}
-
-wns::Power OFDMAAspect::getNoisePerSubChannel() const
-{
-    //thermal noise: -174 dBm at room temperature (290 K) in a 1 Hz bandwidth (BW)
-    wns::Power noise = wns::Power::from_dBm(-174);
-    noise += wns::Ratio::from_factor(carrierBandwidth*1E6);
-    //receiver noise figure: degradation of received signal quality due to imperfections
-    noise += receiverNoiseFigure;
-    return noise;
-}
-
-// receiver noise figure: degradation of received signal quality due to imperfections
-wns::Ratio OFDMAAspect::getNoiseFigure() const
-{
-    return receiverNoiseFigure;
-}
-
-/* method to get a specific subCarrier for getting its FTFading (required for FTFading) */
-int
-OFDMAAspect::getSubCarrierIndex(double f)
-{
-    int i = (int)((f-lowestFrequency)/carrierBandwidth);
-    assure(i>=0,"getSubCarrierIndex("<<f<<") = "<<i<<" is negative");
-    return i;
-}
-
-// constructor
-FTFadingAspect::FTFadingAspect(const wns::pyconfig::View& config) :
-    //ReceiverBase(config),
-    ftfading(NULL),
-    active(false),
-    samplingTime(0.0)
-{
-    // somehow ReceiverBase(config) does not initialize the logger
-    if (logger.getModuleName().compare("unspecified")==0)
-        logger=wns::logger::Logger(config.getView("logger")); // workaround.
-
-    assure(config.knows("FTFadingStrategy"),"FTFadingStrategy unknown");
-    if (!config.isNone("FTFadingStrategy")) 
-    {
-        wns::pyconfig::View ftfadingView = config.get("FTFadingStrategy");
-
-        assure(ftfadingView.knows("ftfadingName"),"ftfadingName unknown");
-        if (!ftfadingView.isNone("ftfadingName")) 
-        {
-            std::string ftfadingName = ftfadingView.get<std::string>("ftfadingName");
-            assure(ftfadingName.length()>0,"invalid ftfadingName");
-            assure(logger.getModuleName().compare("unspecified")!=0,"logger problem");
-
-            MESSAGE_SINGLE(NORMAL, logger, "Establishing ftfading strategy "<<ftfadingName);
-
-            /** @brief create FTFading object from factory by name */
-            rise::scenario::ftfading::FTFading::FTFadingCreator* FTFadingCreator =
-                rise::scenario::ftfading::FTFading::FTFadingFactory::creator(ftfadingName);
-
-            ftfading = FTFadingCreator->create(ftfadingView);
-            assure(ftfading!=NULL,"Error getting ftfading");
-
-            samplingTime = ftfading->getSamplingTime();
-            assure(samplingTime>=0.0,"samplingTime must be positive: t="<<samplingTime);
-
-            // samplingTime of all ftfading processes should be the same
-            if (samplingTime > 0.0)
-            {
-                MESSAGE_SINGLE(NORMAL, logger, "Retrieved ftfading (strategy "<<ftfadingName<<") from Broker.");
-                active=true;
-            }
-            else
-            {
-                // effectively fading is off
-                MESSAGE_SINGLE(NORMAL, logger, "Retrieved ftfading (strategy "<<ftfadingName<<") from Broker. Switching off.");
-                delete ftfading; ftfading=NULL;
-                active=false;
-            }
-        }
-    } // else ftfading = NULL;
-}
-
-// destructor
-FTFadingAspect::~FTFadingAspect()
-{
-}
-
-bool FTFadingAspect::FTFadingIsActive() const
-{
-    return active && (ftfading!=NULL);
-}
-
-wns::Ratio FTFadingAspect::getFTFading(int _subCarrier)
-{
-    assure(ftfading,"no FTFading object");
-    assure(_subCarrier>=0,"subCarrier must be positive");
-
-    // positive value = constructive; negative value = destructive
-    return ftfading->getFTFading(_subCarrier);
-}
-
-wns::Ratio FTFadingAspect::getFTFading(wns::node::Interface* source, int _subCarrier)
-{
-    assure(ftfading!=NULL,"no FTFading object");
-    assure(_subCarrier>=0,"subCarrier must be positive");
-    assure(source!=NULL,"source==NULL");
-
-    //PerSourceContainer myPerSourceContainer = perSourceMap[source];
-    PerSourceMap::iterator perSourceMapFound = perSourceMap.find(source);
-    assure(perSourceMapFound!= perSourceMap.end(),"cannot find source in perSourceMap");
-
-    PerSourceContainer& myPerSourceContainer = (*perSourceMapFound).second;
-
-    rise::scenario::ftfading::FTFading* myFTFading = myPerSourceContainer.ftfading;
-
-    if (myFTFading==NULL)
-    {
-        // create on demand
-        // copy the single fading object for all sources
-        myFTFading = ftfading;
-        // TODO: make individual
-        myPerSourceContainer.ftfading = myFTFading;
-        MESSAGE_SINGLE(NORMAL, logger, "FTFadingAspect::getFTFading("<<source->getName()<<","<<_subCarrier<<"): new ftFading");
-    }
-
-    assure(myFTFading!=NULL,"myFTFading==NULL");
-
-    // positive value = constructive; negative value = destructive
-    return myFTFading->getFTFading(_subCarrier);
-}
-
-// constructor
-MeasurementAspect::MeasurementAspect(const wns::pyconfig::View& config) :
-    doMeasurementUpdates(config.get<bool>("doMeasurementUpdates")),
-    measurementUpdateInterval(0.0),
-    measurementUpdateOffset(0.0)
-{
-    // somehow ReceiverBase(config) does not initialize the logger
-    if (logger.getModuleName().compare("unspecified")==0)
-        logger=wns::logger::Logger(config.getView("logger")); // workaround.
-
-    if (doMeasurementUpdates)
-    {
-        // can also be done if ftfading == NULL
-        if (!config.isNone("measurementUpdateInterval")) 
-        {
-            measurementUpdateInterval = config.get<simTimeType>("measurementUpdateInterval");
-
-            if (measurementUpdateInterval==0.0) 
-            {
-                doMeasurementUpdates=false;
-            }
-            measurementUpdateOffset = config.get<simTimeType>("measurementUpdateOffset");
-        }
-        else
-        {
-            assure(false,"no measurementUpdateInterval in config");
-        }
-
-    }
-    else
-    {
-        measurementUpdateInterval=0.0;
-    }
-}
-
-// destructor
-MeasurementAspect::~MeasurementAspect()
-{
-}
-
-void
-MeasurementAspect::startRegularMeasurementUpdates()
-{
-    // trigger event scheduler
-    assure (measurementUpdateInterval>0.0, "wrong measurementUpdateInterval");
-    assure (measurementUpdateInterval+measurementUpdateOffset>=0.0, "wrong measurementUpdateOffset");
-
-    //MESSAGE_SINGLE(NORMAL, logger, "startRegularMeasurementUpdates: interval="<<measurementUpdateInterval<<"s");
-    setTimeout(measurementUpdateOffset+measurementUpdateInterval); // the first measurement comes at this absolute time
-}
-
-void
-MeasurementAspect::onTimeout()
-{
-    doMeasurementsNow();
-    setTimeout(measurementUpdateInterval); // schedule next event
-}
-
-void
-MeasurementAspect::registerSource(wns::node::Interface* source)
-{
-    if (!doMeasurementUpdates) 
-        return;
-
-    assure(source!=NULL,"source==NULL");
-
-    int numberOfSubChannels = getCurrentNumberOfSubCarriers();
-    PerSourceMap::iterator perSourceMapFound = perSourceMap.find(source);
-
-    if (perSourceMapFound == perSourceMap.end()) 
-    {
-        // not found
-        MESSAGE_SINGLE(NORMAL, logger, "registerSource("<<source->getName()<<") successful");
-
-        PerSourceContainer myPerSourceContainer;
-        myPerSourceContainer.packetCount = 0;
-        myPerSourceContainer.ftfading = NULL;
-        myPerSourceContainer.quasiStaticPathLoss = wns::Ratio::from_dB(0.0);
-        wns::Power interferenceTemplate = getNoisePerSubChannel();
-        myPerSourceContainer.interferenceVector = std::vector<wns::Power>(numberOfSubChannels,interferenceTemplate);
-        perSourceMap[source] = myPerSourceContainer; // insert (copy)
-    }
-}
-
-/* simplified interface if only TransmissionObjectPtr is known */
-wns::node::Interface*
-MeasurementAspect::registerSource(rise::TransmissionObjectPtr t)
-{
-    rise::Transmitter* transmitter = t->getTransmitter();
-    assure(transmitter!=NULL,"transmitter==NULL");
-
-    Station* sourceStation = dynamic_cast<Station*>(transmitter->getStation());
-    assure(sourceStation!=NULL,"sourceStation==NULL");
-
-    wns::node::Interface* sourceNode = sourceStation->getNode();
-    registerSource(sourceNode);
-    return sourceNode;
-}
-
-PerSourceContainer&
-MeasurementAspect::getPerSourceContainer(wns::node::Interface* source)
-{
-    assure(source!=NULL,"source==NULL");
-
-    PerSourceMap::iterator perSourceMapFound = perSourceMap.find(source);
-    assure(perSourceMapFound!= perSourceMap.end(),"cannot find source "<<source->getName()<<" in perSourceMap");
-
-    PerSourceContainer& myPerSourceContainer = (*perSourceMapFound).second; // no copy, just reference
-    return myPerSourceContainer;
-}
-
-void
-MeasurementAspect::saveMeasuredFlatPathloss(wns::node::Interface* source, wns::Ratio pathloss)
-{
-    assure(source!=NULL,"source==NULL");
-
-    PerSourceMap::iterator perSourceMapFound = perSourceMap.find(source);
-
-    if (perSourceMapFound!= perSourceMap.end())
-    {
-        PerSourceContainer& myPerSourceContainer = (*perSourceMapFound).second;
-        myPerSourceContainer.quasiStaticPathLoss = pathloss;
-        myPerSourceContainer.packetCount++;
-        MESSAGE_SINGLE(NORMAL, logger, "saveMeasuredFlatPathloss("<<source->getName()<<","<<pathloss<<"): count="<<myPerSourceContainer.packetCount);
-    }
-    else
-    {
-        MESSAGE_SINGLE(NORMAL, logger, "saveMeasuredFlatPathloss("<<source->getName()<<","<<pathloss<<"): unregistered source");
-    }
-}
-
-/****************************************************************************************/
+using namespace ofdmaphy::receiver;
 
 Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
     ReceiverBase(config),
@@ -416,6 +92,11 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
         const std::valarray<double> va = v.get();
         MESSAGE_SINGLE(NORMAL, logger, "wraparoundShiftVectors["<<i<<"]=("<<va[0]<<","<<va[1]<<")");
     }
+
+    mimoProcessing = mimo::CalculationStrategyFactory::creator(
+        config.get<std::string>("mimoProcessing.__plugin__"))->create(config.getView("mimoProcessing"),
+                                                                      this,
+                                                                      &logger);
 }
 
 Receiver::~Receiver()
@@ -431,7 +112,8 @@ Receiver::~Receiver()
 }
 
 // this overloads a method from rise::Receiver
-wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t)
+wns::Power
+Receiver::getRxPower(const rise::TransmissionObjectPtr& t)
 {
     wns::Power rxPower = getRxPower(t, getCurrentReceivePattern(t));
     MESSAGE_BEGIN(VERBOSE, logger, m , "getRxPower");
@@ -440,13 +122,12 @@ wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t)
     return rxPower;
 }
 
-wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
+wns::Ratio
+Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
 {
     double frequency = t->getPhysicalResource()->getFrequency();
     rise::Transmitter* transmitter = t->getTransmitter();
     assure(transmitter!=NULL,"transmitter==NULL");
-    //Station* transmitterOFDMAStation = dynamic_cast<Station*>(transmitter->getStation());
-    //assure(transmitterOFDMAStation != NULL,"Transmitter must have an OFDMAStation"); // new [rs] 24.10.2007
 
     wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition());
     // Idea: wns::Ratio transmittersAntennaGain = t->getTransmittersAntennaGain(getStation()->getPosition()->shift(x,y));
@@ -469,8 +150,6 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
     else
     {
         // beamforming on
-        //assure(dynamic_cast<Station*>(getStation()), "station is not an OFDMA station (and may have no beamforming antenna)");
-        //receiverAntennaGain = dynamic_cast<Station*>(getStation())->getBFAntenna()->getGain(t->getTransmitter()->getAntenna()->getPosition(), pattern);
         Station* receiverOFDMAStation = dynamic_cast<Station*>(getStation());
         assure(receiverOFDMAStation!=NULL, "station is not an OFDMA station (and may have no beamforming antenna)");
         receiverAntennaGain = receiverOFDMAStation->getBFAntenna()->getGain(transmitter->getAntenna()->getPosition(), pattern);
@@ -478,15 +157,16 @@ wns::Ratio Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t
     }
     // TODO: receiverOFDMAStation->getBFAntenna()->getGain() should deliver the same as
     // getStation()->getAntenna()->getGain()
-    // try to simplify this please
-    // assure(receiverAntennaGain1 == receiverAntennaGain2,"error")
     wns::Ratio pathLoss = purePathLoss - transmittersAntennaGain - receiverAntennaGain;
+
     // todo: store it in a cache?
     MESSAGE_SINGLE(VERBOSE,logger, "  getQuasiStaticPathLoss() = " << pathLoss);
+
     return pathLoss;
 }
 
-wns::Ratio Receiver::getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
+wns::Ratio
+Receiver::getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
 {
     wns::Ratio pathLoss = getQuasiStaticPathLoss(t,pattern);
     if (FTFadingIsActive())
@@ -510,9 +190,11 @@ wns::Ratio Receiver::getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::
     return pathLoss;
 }
 
-wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
+wns::Power
+Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
 {
     assure(t, "no existing transmission object");
+
     MESSAGE_BEGIN(VERBOSE, logger, m, "Receiver::getRxPower(User ");
     std::string userName; // only needed if VERBOSE
     Station* OFDMAStation = dynamic_cast<Station*>(t->getTransmitter()->getStation());
@@ -524,18 +206,18 @@ wns::Power Receiver::getRxPower(const rise::TransmissionObjectPtr& t, wns::servi
     MESSAGE_END();
 
     wns::Power rxPower = t->getTxPower();
-    MESSAGE_SINGLE(NORMAL,logger, "TxPower: " << rxPower);
+    MESSAGE_SINGLE(NORMAL, logger, "TxPower: " << rxPower);
 
     wns::Ratio fullPathLoss = getFullPathLoss(t,pattern);
     MESSAGE_SINGLE(NORMAL, logger, "PathLoss Full (inside getRxPower) " << fullPathLoss );
 
     rxPower -= fullPathLoss;
-    MESSAGE_SINGLE(NORMAL,logger, "RxPower: " << rxPower);
+    MESSAGE_SINGLE(NORMAL, logger, "RxPower: " << rxPower);
     return rxPower;
 }
 
-// used for ofdmaStation->getBFAntenna()->setPowerReceivedForStation(transmitterStation, getUnfilteredRxPower(t));
-wns::Power Receiver::getUnfilteredRxPower(const rise::TransmissionObjectPtr& t)
+wns::Power
+Receiver::getUnfilteredRxPower(const rise::TransmissionObjectPtr& t)
 {
     assure(t, "no existing transmission object");
 
@@ -557,7 +239,8 @@ wns::Power Receiver::getUnfilteredRxPower(const rise::TransmissionObjectPtr& t)
     return rxPower;
 }
 
-wns::Power Receiver::getAllRxPower(const int subCarrier)
+wns::Power
+Receiver::getAllRxPower(const int subCarrier)
 {
     wns::Power rxPower;
     assure(subCarrier >= 0, "Cannot measure RxPower of a subCarrier < 0\n");
@@ -568,7 +251,9 @@ wns::Power Receiver::getAllRxPower(const int subCarrier)
 
     // Add all current transmissions
     rise::medium::PhysicalResource::TransmissionObjectIterator itr;
-    for (itr=physicalResources[subCarrier]->getTOBegin(); itr!=physicalResources[subCarrier]->getTOEnd(); ++itr)
+    for (itr=physicalResources[subCarrier]->getTOBegin();
+         itr!=physicalResources[subCarrier]->getTOEnd();
+         ++itr)
     {
         rxPower += getRxPower(*itr);
     }
@@ -577,7 +262,8 @@ wns::Power Receiver::getAllRxPower(const int subCarrier)
 }
 
 
-wns::Power Receiver::getAllRxPower()
+wns::Power
+Receiver::getAllRxPower()
 {
     wns::Power rxPower;
     assure(getCurrentNumberOfSubCarriers() > 0, "Cannot measure RxPower without any subCarrier.\n");
@@ -604,7 +290,9 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
     wns::service::phy::ofdma::PatternPtr currentPattern = getCurrentReceivePattern(t);
 
     // Sum up the power of all active Transmissions itr on this PhysicalResource
-    for(itr=t->getPhysicalResource()->getTOBegin(); itr!=t->getPhysicalResource()->getTOEnd(); ++itr)
+    for(itr=t->getPhysicalResource()->getTOBegin();
+        itr!=t->getPhysicalResource()->getTOEnd();
+        ++itr)
     {
         if (*itr == t)
         {
@@ -720,20 +408,19 @@ wns::service::phy::ofdma::PatternPtr
 Receiver::getCurrentReceivePattern(const rise::TransmissionObjectPtr& t) const
 {
     // station must not be an ofdmaphy station, but it must be a node provider
+    Station* tmpStation = dynamic_cast<ofdmaphy::Station*>(t->getTransmitter()->getStation());
+    if (tmpStation)
     {
-        Station* tmpStation = dynamic_cast<ofdmaphy::Station*>(t->getTransmitter()->getStation());
-        if (tmpStation)
-            return getCurrentReceivePattern(tmpStation->getNode());
+        return getCurrentReceivePattern(tmpStation->getNode());
     }
 
+    Sender* tmpSender = dynamic_cast<ofdmaphy::Sender*>(t->getTransmitter()->getStation());
+    if (tmpSender)
     {
-        Sender* tmpStation = dynamic_cast<ofdmaphy::Sender*>(t->getTransmitter()->getStation());
-        if (tmpStation)
-            return getCurrentReceivePattern(tmpStation->getMyNode());
+        return getCurrentReceivePattern(tmpSender->getMyNode());
     }
 
     throw wns::Exception("Unable to determine station type of sender");
-    //return wns::service::phy::ofdma::PatternPtr();
 }
 
 wns::service::phy::ofdma::PatternPtr
@@ -743,7 +430,8 @@ Receiver::getCurrentReceivePattern(wns::node::Interface* pStack) const
     std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr>::const_iterator itr;
     itr = currentReceivePatterns.find(pStack);
 
-    if( itr == currentReceivePatterns.end()) {
+    if( itr == currentReceivePatterns.end())
+    {
         // omni-directional reception performed with static antenna
         return  wns::service::phy::ofdma::PatternPtr();
     }
@@ -757,25 +445,12 @@ Receiver::getCurrentReceivePattern(wns::node::Interface* pStack) const
 
 void Receiver::writeCacheEntry(rise::PropCacheEntry& cacheEntry, rise::Transmitter* t, double freq)
 {
-    //	rise::Station& rxStation = *getStation();
-    //	rise::antenna::Antenna& rxAntenna = *rxStation.getAntenna();
-    //	rise::antenna::Antenna& txAntenna = *t->getAntenna();
-
-    wns::Ratio pl = getPathloss(*t, freq);
-    wns::Ratio sh = getShadowing(*t);
-
-    cacheEntry.setPathloss(pl);
-    cacheEntry.setShadowing(sh);
-
-    // receive antenna gain at transmitter's position
-    //wns::Ratio r1 = rxAntenna.getGain(txAntenna.getPosition(), NULL);
-    // transmit antenna gain at receiver's position
-    //wns::Ratio r2 = txAntenna.getGain(rxAntenna.getPosition(), NULL);
+    cacheEntry.setPathloss(getPathloss(*t, freq));
+    cacheEntry.setShadowing(getShadowing(*t));
     cacheEntry.setAntennaGain(wns::Ratio::from_dB(0));
     cacheEntry.setValid(true);
 }
 
-/** @brief PathlossCalculationInterface (from propagation cache) */
 wns::Ratio Receiver::getLoss(rise::Transmitter* t, double f)
 {
     MESSAGE_BEGIN(VERBOSE, logger, m , "  PathLossFromPropagationCache: ");
@@ -798,41 +473,38 @@ void Receiver::positionWillChange()
 // triggered by PhysicalResourceObserver::notify in RISE/PhysicalResource.cpp
 void Receiver::notify(rise::TransmissionObjectPtr t)
 {
-	// Do not receive from myself
+    // Do not receive from myself
     if(t->getTransmitter() == getOFDMAStation()->getTransmitter())
     {
-	    // For each started and stopped transmission, the Received Signal Strenght
-	    // (RSS) at the receiver changes. Upper FUs can observe the RSS to detect a
-	    // busy channel.
-	    // The signalling is made only if observers are present, as the operation
-	    // (adding dBm values) is costly and must be done for every packet at every receiver.
-	    if (this->wns::Subject<RSSInterface>::hasObservers())
-	    {
-	        // For getAllRxPower, the notify() comes always too early (see
-	        // rise::medium::PhysicalResource): first the receiver is notified, then
-	        // the transmission is added or removed. Hence, we have to add/substract the
-	        // new/old transmission. The mobility is not effected, as both
-	        // getAllRxPower() and getRxPower() return a 'snapshot' of now
-		if (t->getIsStart())
-			return;
-	        wns::Power newReceivedSignalStrength = getAllRxPower();
-	        assure(newReceivedSignalStrength > getRxPower(t), "receivedSignalStrength is too low for current ongoing	transmission\n");
-	        newReceivedSignalStrength -= getRxPower(t);
-	        if (newReceivedSignalStrength != receivedSignalStrength)
-	        {
-	            // the new signal strength is propagated with a delay
-	            receivedSignalStrength = newReceivedSignalStrength;
-	            this->signalNewReceivedSignalStrength();
-	        }
-	    }
-	    return;
+        // For each started and stopped transmission, the Received Signal Strenght
+        // (RSS) at the receiver changes. Upper FUs can observe the RSS to detect a
+        // busy channel.
+        // The signalling is made only if observers are present, as the operation
+        // (adding dBm values) is costly and must be done for every packet at every receiver.
+        if (this->wns::Subject<RSSInterface>::hasObservers())
+        {
+            // For getAllRxPower, the notify() comes always too early (see
+            // rise::medium::PhysicalResource): first the receiver is notified, then
+            // the transmission is added or removed. Hence, we have to add/substract the
+            // new/old transmission. The mobility is not effected, as both
+            // getAllRxPower() and getRxPower() return a 'snapshot' of now
+            if (t->getIsStart())
+                return;
+            wns::Power newReceivedSignalStrength = getAllRxPower();
+            assure(newReceivedSignalStrength > getRxPower(t), "receivedSignalStrength is too low for current ongoing	transmission\n");
+            newReceivedSignalStrength -= getRxPower(t);
+            if (newReceivedSignalStrength != receivedSignalStrength)
+            {
+                // the new signal strength is propagated with a delay
+                receivedSignalStrength = newReceivedSignalStrength;
+                this->signalNewReceivedSignalStrength();
+            }
+        }
+        return;
     }
 
     if (transmissionForMe(t))
     {
-        //Station* ofdmaStation = getOFDMAStation();
-        //wns::node::Interface* sourceNode = ofdmaStation->getNode();
-        //registerSource(sourceNode);
         wns::node::Interface* sourceNode = registerSource(t); // for OFDMA
                                                               // measurements
 
@@ -840,8 +512,7 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
         {
             // start of transmission
             MESSAGE_BEGIN(NORMAL, logger, m, "ofdmaphy::Receiver::notify(): startOfTransmission");
-
-            if (Station* ofdmaStation = dynamic_cast<Station*>(t->getTransmitter()->getStation())) 
+            if (Station* ofdmaStation = dynamic_cast<Station*>(t->getTransmitter()->getStation()))
             {
                 m << " from " << ofdmaStation->getNode()->getName();
             }
@@ -866,14 +537,14 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                 // ^ inherited from TimeWeightedTransmissionAveraging::endOfTransmission
                 // inherited from rise::Receiver, from rise::ReceiverInterface::TransmissionAveragingStrategy
 
-                wns::Ratio omniAttenuation;
+                wns::Ratio omniAttenuation = wns::Ratio::from_dB(0);
                 wns::service::phy::ofdma::PatternPtr pattern = getCurrentReceivePattern(t);
-                if (pattern == wns::service::phy::ofdma::PatternPtr()) // empty pattern
-                    omniAttenuation = wns::Ratio::from_dB(0);
-                else
+                if (pattern != wns::service::phy::ofdma::PatternPtr())
+                {
+                    // not an empty pattern
                     omniAttenuation = pattern->getOmniAttenuation();
+                }
 
-                // pass received thing upwards in the stack:
                 Station* ofdmaStation = getOFDMAStation();
 
                 if (doMeasurementUpdates)
@@ -883,6 +554,12 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                     saveMeasuredFlatPathloss(sourceNode,pathLoss);
                 }
 
+                std::vector<wns::Ratio> postProcessingSINRFactor(1, wns::Ratio::from_factor(1.0));
+                // minimize calculation if MIMO is not used at all
+                if(ofdmaStation->getNumAntennas() > 1 or t->getNumberOfSpatialStreams() > 1)
+                {
+                    postProcessingSINRFactor = mimoProcessing->getPostProcessingSINRFactor(t);
+                }
                 wns::service::phy::power::PowerMeasurementPtr rxPowerMeasurementPtr =
                     wns::SmartPtr<rise::receiver::PowerMeasurement>
                     (new rise::receiver::PowerMeasurement(t,
@@ -890,10 +567,12 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                                                           getAveragedRxPower(t),
                                                           getAveragedInterference(t),
                                                           omniAttenuation,
-                                                          getSubCarrierIndex(t->getPhysicalResource()->getFrequency()))
-                        );
+                                                          postProcessingSINRFactor));
                 MESSAGE_SINGLE(NORMAL, logger, "PowerMeasurement="<<*rxPowerMeasurementPtr);
-                ofdmaStation->receiveData(/* sdu */t->getPayload(), rxPowerMeasurementPtr);
+
+                // pass received payload upwards in the stack:
+                ofdmaStation->receiveData(t->getPayload(),
+                                          rxPowerMeasurementPtr);
 
                 // update list of receive power of stations in the BFAntenna
                 // periodically. Note that we have to store unfiltered Rx Power,
@@ -911,7 +590,9 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                 assure(find(activeTransmissions.begin(), activeTransmissions.end(),t) != activeTransmissions.end(),
                        "Mismatch in Transmission Notifications!");
                 activeTransmissions.remove(t);
-            } else {
+            }
+            else
+            {
                 // Do nothing, we haven't heard the beginning of the
                 // transmission. This can happen if we tune to a new frequency
                 // and bandwidth. Then transmissions are already active on a
@@ -990,29 +671,29 @@ Receiver::doMeasurementsNow()
 
         PerSourceContainer& perSourceContainer = perSourceIterator->second;
         wns::Ratio quasiStaticPathLoss = perSourceContainer.quasiStaticPathLoss;
-        rise::scenario::ftfading::FTFading* ftfading = perSourceContainer.ftfading; // Pointer
+        rise::scenario::ftfading::FTFading* ftfading = perSourceContainer.ftfading;
 
         assure((int)perSourceContainer.interferenceVector.size()==numberOfSubChannels,
                "wrong interferenceVector.size="<<perSourceContainer.interferenceVector.size());
 
-        // if (perSourceContainer.packetCount < 10) // irrelevant
         MESSAGE_SINGLE(NORMAL, logger, "  source="<<source->getName()<<": PL="<<quasiStaticPathLoss<<", c="<<perSourceContainer.packetCount);
         wns::service::phy::power::OFDMAMeasurementPtr ofdmaMeasurementPtr =
-            //wns::SmartPtr<ofdmaphy::OFDMAMeasurement>
             ofdmaphy::OFDMAPHYMeasurementPtr
-            (new ofdmaphy::OFDMAMeasurement(source, numberOfSubChannels,
-                                            /*valid_for*/measurementUpdateInterval,
+            (new ofdmaphy::OFDMAMeasurement(source,
+                                            numberOfSubChannels,
+                                            measurementUpdateInterval,
                                             quasiStaticPathLoss,
                                             ftfading,
                                             perSourceContainer.interferenceVector, // big copy
                                             logger));
 
+
         // send measurements
         ofdmaStation->measurementUpdate(source,ofdmaMeasurementPtr);
-        // clear members for next cycle:
-        //for(int subChannel=0; subChannel<numberOfSubChannels; ++subChannel)
-        // perSourceContainer.interferenceVector[subChannel] = noiseOnSubChannel; // copy
-        perSourceContainer.interferenceVector = std::vector<wns::Power>(numberOfSubChannels,interferenceTemplate); // new vector object
+
+        // new vector object
+        perSourceContainer.interferenceVector =
+            std::vector<wns::Power>(numberOfSubChannels,interferenceTemplate);
     } // forall sources
 }
 
@@ -1036,7 +717,6 @@ void Receiver::tune(double f, double b, int numberOfSubCarriers)
     MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Receiver::tune(f="<<f<<",b="<<b<<",#SC="<<numberOfSubCarriers<<")");
 
     OFDMAAspect::tune(f, b, numberOfSubCarriers); // inherited
-    //currentNumberOfSubCarriers = numberOfSubCarriers;
 
     // Change of frequency means new received signal strength
     if (this->wns::Subject<RSSInterface>::hasObservers())
