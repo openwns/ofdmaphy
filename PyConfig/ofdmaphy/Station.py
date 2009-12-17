@@ -71,6 +71,11 @@ class OFDMAStation(MobileStation):
         self.eirpLimited = eirpLimited
         self.numAntennas = noOfAntenna
 
+class OFDMABFStation(OFDMAStation):
+    def __init__(self, _receiver, _transmitter, parentLogger = None, eirpLimited = False, noOfAntenna = 4, arrayLayout = "linear", positionErrorVariance = 0.0):
+        super(OFDMABFStation, self).__init__(_receiver, _transmitter, parentLogger, eirpLimited, noOfAntenna, arrayLayout, positionErrorVariance)
+        self.beamformingAntenna = BFAntenna(noOfAntenna, [0,0,1.5], arrayLayout, positionErrorVariance)
+
 
 class OFDMAStationDropIn(OFDMAStation):
     """ This class is only for the OFDMA Test """
@@ -123,4 +128,3 @@ class Scanner(MobileStation, openwns.node.Component):
 
         self.logger = Logger("OFDMAPHY", name+".PHY.Scanner", True, parentLogger)
         self.nameInComponentFactory = 'ofdmaphy.Scanner'
-        self.rxFrequency = centerFrequency - 0.7812/2.0
