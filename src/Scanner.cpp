@@ -69,7 +69,18 @@ Scanner::Receiver::notify(rise::TransmissionObjectPtr to)
 void
 Scanner::Receiver::positionChanged()
 {
+<<<<<<< TREE
     ofdmaphy::receiver::Receiver::positionChanged();
+=======
+    ofdmaphy::Receiver::positionChanged();
+
+    wns::Position currentPosition = getStation()->getAntenna()->getPosition();
+
+    wns::Ratio maxSINR = wns::Ratio::from_dB(-250);
+    wns::Power maxRxPwr = wns::Power::from_dBm(-250);
+    wns::Ratio minPathloss = wns::Ratio::from_dB(300);
+    double assocdistance = 0.0;
+>>>>>>> MERGE-SOURCE
 
 	for (TOList::const_iterator itr = transmissions.begin();
 		 itr != transmissions.end();
@@ -78,10 +89,23 @@ Scanner::Receiver::positionChanged()
 		Transmitter<Sender>* transmitter = 
 			dynamic_cast<Transmitter<Sender>*>((*itr)->getTransmitter());
 
+        wns::Position bsPosition = transmitter->getAntenna()->getPosition();
+        double distance = (bsPosition - currentPosition).abs();
 		wns::Power txp    = (*itr)->getTxPower();
 		wns::Power rxp    = this->getRxPower(*itr);
 		wns::Power interf = this->getInterference(*itr);
 		wns::Ratio sinr   = rxp / interf;
+        wns::Ratio pathloss = this->getQuasiStaticPathLoss((*itr), wns::service::phy::ofdma::PatternPtr());
+        pathloss += wns::Ratio::from_dB(2.0);
+
+        maxSINR = std::max(maxSINR, sinr);
+        maxRxPwr = std::max(maxRxPwr, rxp);
+        if (pathloss < minPathloss)
+        {
+            minPathloss = pathloss;
+            assocdistance = distance;
+        }
+
 
 		std::string msName = scanner->getMyNode()->getName();
 
@@ -99,7 +123,27 @@ Scanner::Receiver::positionChanged()
 
 		rxpContextCollector->put(rxp.get_dBm());
 		sinrContextCollector->put(sinr.get_dB());
+        pathlossContextCollector->put(-1 * pathloss.get_dB());
 	}
+
+    if (boost::logic::indeterminate(minPathloss.los))
+    {
+        return;
+    }
+
+    maxRxpContextCollector->put(maxRxPwr.get_dBm());
+    maxSINRContextCollector->put(maxSINR.get_dB());
+    minPathlossContextCollector->put(-1 * minPathloss.get_dB());
+    distanceContextCollector->put(assocdistance);
+
+    if(minPathloss.los)
+    {
+        losNLOSRatioContextCollector->put(1.0);
+    }
+    else
+    {
+        losNLOSRatioContextCollector->put(0.0);
+    }
 }
 
 wns::Power
@@ -132,6 +176,28 @@ Scanner::Receiver::initProbes(const wns::pyconfig::View& config)
 	sinrContextCollector = wns::probe::bus::ContextCollectorPtr(
 		new wns::probe::bus::ContextCollector(localcpc,
 											  config.get<std::string>("sinrProbeName")));
+
+    pathlossContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("pathlossProbeName")));
+    
+    maxRxpContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("maxRxpProbeName")));
+
+    maxSINRContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("maxSINRProbeName")));
+
+    minPathlossContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("minPathlossProbeName")));
+
+    distanceContextCollector = wns::probe::bus::ContextCollectorPtr(
+        new wns::probe::bus::ContextCollector(localcpc,
+                                              config.get<std::string>("distanceProbeName")));
+
+    losNLOSRatioContextCollector = wns::probe::bus::ContextCollectorPtr(new wns::probe::bus::ContextCollector(localcpc, "rise.scenario.pathloss.ITUPathloss.losNLOSRatio"));
 }
 
 int
