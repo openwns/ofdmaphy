@@ -69,10 +69,7 @@ Scanner::Receiver::notify(rise::TransmissionObjectPtr to)
 void
 Scanner::Receiver::positionChanged()
 {
-<<<<<<< TREE
     ofdmaphy::receiver::Receiver::positionChanged();
-=======
-    ofdmaphy::Receiver::positionChanged();
 
     wns::Position currentPosition = getStation()->getAntenna()->getPosition();
 
@@ -80,7 +77,6 @@ Scanner::Receiver::positionChanged()
     wns::Power maxRxPwr = wns::Power::from_dBm(-250);
     wns::Ratio minPathloss = wns::Ratio::from_dB(300);
     double assocdistance = 0.0;
->>>>>>> MERGE-SOURCE
 
 	for (TOList::const_iterator itr = transmissions.begin();
 		 itr != transmissions.end();

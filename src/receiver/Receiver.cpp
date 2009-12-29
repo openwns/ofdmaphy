@@ -224,7 +224,7 @@ Receiver::getUnfilteredRxPower(const rise::TransmissionObjectPtr& t)
     wns::Power rxPower = t->getTxPower();
 
     rxPower -= getLoss(t->getTransmitter(), t->getPhysicalResource()->getFrequency());
-    rxPower += t->getTransmittersAntennaGain(getStation()->getPosition());
+    rxPower += t->getTransmittersAntennaGain(getStation()->getAntenna()->getPosition());
 
     if (ftfading)
     {

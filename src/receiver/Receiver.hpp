@@ -178,7 +178,7 @@ namespace ofdmaphy { namespace receiver {
                 assure(t, "MIMO processing is not of the requested type");
                 return t;
             }
-    private:
+
         /** @brief PathlossCalculationInterface (from propagation cache) */
         virtual wns::Ratio
         getLoss(rise::Transmitter* t, double f);
@@ -188,7 +188,7 @@ namespace ofdmaphy { namespace receiver {
 
         virtual wns::Ratio
         getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern);
-
+    private:
         rise::Station* station;
 
         rise::PropagationCache* propagationCache;
