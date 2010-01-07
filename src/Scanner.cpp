@@ -122,24 +122,10 @@ Scanner::Receiver::positionChanged()
         pathlossContextCollector->put(-1 * pathloss.get_dB());
 	}
 
-    if (boost::logic::indeterminate(minPathloss.los))
-    {
-        return;
-    }
-
     maxRxpContextCollector->put(maxRxPwr.get_dBm());
     maxSINRContextCollector->put(maxSINR.get_dB());
     minPathlossContextCollector->put(-1 * minPathloss.get_dB());
     distanceContextCollector->put(assocdistance);
-
-    if(minPathloss.los)
-    {
-        losNLOSRatioContextCollector->put(1.0);
-    }
-    else
-    {
-        losNLOSRatioContextCollector->put(0.0);
-    }
 }
 
 wns::Power
@@ -192,8 +178,6 @@ Scanner::Receiver::initProbes(const wns::pyconfig::View& config)
     distanceContextCollector = wns::probe::bus::ContextCollectorPtr(
         new wns::probe::bus::ContextCollector(localcpc,
                                               config.get<std::string>("distanceProbeName")));
-
-    losNLOSRatioContextCollector = wns::probe::bus::ContextCollectorPtr(new wns::probe::bus::ContextCollector(localcpc, "rise.scenario.pathloss.ITUPathloss.losNLOSRatio"));
 }
 
 int
