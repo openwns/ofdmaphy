@@ -149,6 +149,9 @@ namespace ofdmaphy { namespace receiver {
         bool
         isReceiving() const;
 
+        std::string
+        printActiveTransmissions() const;
+
         virtual void
         tune(double f, double b, int numberOfSubCarriers);
 
@@ -194,7 +197,8 @@ namespace ofdmaphy { namespace receiver {
         rise::PropagationCache* propagationCache;
 
         std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> currentReceivePatterns;
-        std::list<rise::TransmissionObjectPtr> activeTransmissions;
+        typedef std::list<rise::TransmissionObjectPtr> TransmissionObjectPtrList;
+        TransmissionObjectPtrList activeTransmissions;
 
         wns::Power receivedSignalStrength;
 

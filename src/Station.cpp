@@ -564,6 +564,12 @@ Station::isReceiving() const
     return receiver->isReceiving();
 }
 
+std::string
+Station::printActiveTransmissions() const
+{
+    return receiver->printActiveTransmissions();
+}
+
 void
 Station::setRxTune(const wns::service::phy::ofdma::Tune& rxTune)
 {

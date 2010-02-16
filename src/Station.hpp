@@ -199,6 +199,9 @@ namespace ofdmaphy {
         virtual bool
         isReceiving() const;
 
+        virtual std::string
+        printActiveTransmissions() const;
+
         virtual void
         insertReceivePattern(wns::node::Interface*, wns::service::phy::ofdma::PatternPtr);
 

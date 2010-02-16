@@ -49,9 +49,11 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
     LossCalculation(config),
     station(s),
     propagationCache(new rise::IdVectorCache(this)),
+    activeTransmissions(),
     wraparoundShiftVectors(NULL),
     nSectors(config.get<int>("nSectors"))
 {
+    activeTransmissions.clear();
     this->startObserving(s);
 
     if (measurementUpdatesAreOn())
@@ -701,6 +703,24 @@ bool
 Receiver::isReceiving() const
 {
     return (!activeTransmissions.empty());
+}
+
+// very useful for debugging:
+std::string
+Receiver::printActiveTransmissions() const
+{
+    assure(this!=NULL,"Houston, we have a problem");
+    std::stringstream s;
+    s << "activeTransmissions =" << std::endl;
+    //TransmissionObjectPtrList activeTransmissions;
+    for ( TransmissionObjectPtrList::const_iterator iter = activeTransmissions.begin();
+          iter != activeTransmissions.end(); ++iter)
+    {
+        rise::TransmissionObjectPtr transmissionObject = *iter; // SmartPtr
+        s << transmissionObject->toString() << std::endl;
+        
+    }
+    return s.str();
 }
 
 void Receiver::mobilityUpdate(rise::Transmitter* t)
