@@ -36,6 +36,10 @@
 
 namespace ofdmaphy {
 	template <typename STATIONTYPE>
+        /**
+         * @brief OFDMA version of transmitter
+         * This really doesn't do much on its own. It simply relies on the RISE base class.
+         */
 	class Transmitter :
  		public rise::Transmitter
  	{

@@ -48,8 +48,8 @@
 
 namespace ofdmaphy { namespace receiver {
     /**
-	 * @brief OFDMA implementation of MultiCarrier receiver
-	 */
+     * @brief OFDMA implementation of MultiCarrier receiver
+     */
     class Receiver :
         virtual public ReceiverBase,
         public OFDMAAspect,
