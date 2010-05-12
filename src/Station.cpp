@@ -172,7 +172,7 @@ Station::startBroadcast(wns::osi::PDUPtr sdu, int subBand, wns::Power requestedP
                                               sdu,
                                               txPower,
                                               phyModePtr,
-                                              uint32_t(1)));
+                                              (unsigned long int)(1)));
 
     MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startBroadcast(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<")");
     this->startTransmitting(sdu, bto, subBand);
@@ -221,7 +221,7 @@ Station::startUnicast(wns::osi::PDUPtr sdu, wns::node::Interface* _recipient, in
 
 	rise::UnicastTransmissionObjectPtr uto(new rise::UnicastTransmissionObject(transmitter,
                                                                                recipient->receiver,
-                                                                               uint32_t(1),
+                                                                               (unsigned long int)(1),
                                                                                sdu,
                                                                                txPower,
                                                                                phyModePtr));
@@ -501,7 +501,7 @@ Station::startTransmission(wns::osi::PDUPtr sdu,
                                                                                requestedTxPower,
                                                                                phyModePtr,
                                                                                pattern,
-                                                                               uint32_t(1)));
+                                                                               (unsigned long int)(1)));
     MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startTransmissions(subBand="<<subBand<<",P="<<txPower<<",M&C="<<*phyModePtr<<") BF");
     this->startTransmitting(sdu, bfto, subBand);
 
@@ -545,7 +545,7 @@ Station::startTransmission(wns::osi::PDUPtr sdu,
                                                                                sdu,
                                                                                requestedTxPower,
                                                                                pattern,
-                                                                               uint32_t(1),
+                                                                               (unsigned long int)(1),
                                                                                numberOfSpatialStreams));
     MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station::startTransmissions(subBand="<<subBand<<",P="<<txPower<<",numSS="<<numberOfSpatialStreams<<") BF");
     this->startTransmitting(sdu, bfto, subBand);

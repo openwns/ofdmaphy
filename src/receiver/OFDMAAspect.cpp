@@ -59,7 +59,7 @@ OFDMAAspect::tune(double f, double b, int numberOfSubCarriers)
     firstCarrierMidFrequency = lowestFrequency + carrierBandwidth/2;
 
     // allocate physicalResources for all subCarriers:
-    for(int32_t i=0; i<numberOfSubCarriers; ++i)
+    for(long int i=0; i<numberOfSubCarriers; ++i)
     {
         double midFrequency = firstCarrierMidFrequency + i*carrierBandwidth;
         rise::medium::Medium* m = rise::medium::Medium::getInstance();
