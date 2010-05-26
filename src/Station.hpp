@@ -217,6 +217,15 @@ namespace ofdmaphy {
         virtual void
         stopReceiving();
 
+        virtual void
+        enableReception();
+
+        virtual void
+        disableReception();
+
+        virtual bool
+        isReceptionEnabled() const ;
+
         virtual wns::Power
         getMaxPowerPerSubband() const {return maxTxPowerPerSubband;}
 
@@ -331,6 +340,7 @@ namespace ofdmaphy {
         wns::service::phy::ofdma::RSSHandler* rssHandler;
         wns::service::phy::ofdma::MeasurementHandler* measurementHandler;
         Component* component;
+        bool isReceptionEnabledFlag;
 
         virtual wns::CandI getCurrentCandI(wns::osi::PDUPtr sdu);
 

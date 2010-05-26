@@ -298,11 +298,7 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
     {
         if (*itr == t)
         {
-            // own transmission
-            //MESSAGE_SINGLE(VERBOSE, logger,
-            //"ofdmaphy::Receiver::getInterference(): own transmission");
-
-            // exclude from addition here, as getRxPower() might be costly.
+            // Do not include power of this transmission 
         }
         else
         {
@@ -475,8 +471,13 @@ void Receiver::positionWillChange()
 // triggered by PhysicalResourceObserver::notify in RISE/PhysicalResource.cpp
 void Receiver::notify(rise::TransmissionObjectPtr t)
 {
+    // Only if we were set to receive mode we listen to notifications
+    if (! (getOFDMAStation()->isReceptionEnabled()))
+    {
+       return;
+    }
     // Do not receive from myself
-    if(t->getTransmitter() == getOFDMAStation()->getTransmitter())
+    if(t->getTransmitter()->getStation()->getStationId() == getStation()->getStationId())
     {
         // For each started and stopped transmission, the Received Signal Strenght
         // (RSS) at the receiver changes. Upper FUs can observe the RSS to detect a

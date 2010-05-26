@@ -65,7 +65,8 @@ Station::Station(Component* _component, const wns::pyconfig::View& pyConfigView)
     activeTransmissions(),
     handler(NULL),
     measurementHandler(NULL),
-    component(_component) // to be removed, only for Node retrieval
+    component(_component), // to be removed, only for Node retrieval
+    isReceptionEnabledFlag(true)
 {
 //    MESSAGE_SINGLE(NORMAL, logger, "ofdmaphy::Station contruction. total txPower="<<txPower);
 
@@ -700,6 +701,24 @@ Station::startReceiving(){
 void
 Station::stopReceiving(){
 // must be implemented since it is abstract
+}
+
+void
+Station::enableReception()
+{
+    isReceptionEnabledFlag = true;
+}
+
+void
+Station::disableReception()
+{
+    isReceptionEnabledFlag = false;
+}
+
+bool
+Station::isReceptionEnabled() const
+{
+    return isReceptionEnabledFlag;
 }
 
 wns::node::Interface*
