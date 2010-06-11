@@ -123,7 +123,7 @@ CorrelatedStaticZF::getPostProcessingSINRFactor(rise::TransmissionObjectPtr t)
     MESSAGE_BEGIN(NORMAL, *logger, m, "CorrelatedStaticZF: TX");
     m << " orientation " << peer->getArrayOrientation();
     m << " AoD " << AoD/M_PI*180 << "d";
-    m << " AoDS " << peer->getAngleSpread() << "d";
+    m << " ASD " << peer->getAngleSpread() << "rad";
     m << " spacing " << peer->getAntennaSpacing();
     m << " -> loss: ";
     for(std::vector<wns::Ratio>::const_iterator it = txLoss.begin();
@@ -137,7 +137,7 @@ CorrelatedStaticZF::getPostProcessingSINRFactor(rise::TransmissionObjectPtr t)
     MESSAGE_BEGIN(NORMAL, *logger, m, "CorrelatedStaticZF: RX");
     m << " orientation " << this->getArrayOrientation();
     m << " AoA " << AoA/M_PI*180 << "d";
-    m << " AoAS " << this->getAngleSpread() << "d";
+    m << " ASA " << this->getAngleSpread() << "rad";
     m << " spacing " << this->getAntennaSpacing();
     m << " -> loss: ";
     for(std::vector<wns::Ratio>::const_iterator it = rxLoss.begin();
@@ -158,6 +158,17 @@ CorrelatedStaticZF::getPostProcessingSINRFactor(rise::TransmissionObjectPtr t)
         ++itTx, ++itRx)
     {
         r.push_back(noCorrelationGain - *itTx - *itRx);
+    }
+
+    // single antenna fallback
+    if(r[0].get_dB() < 0 and n_SS == 1)
+    {
+        std::vector<wns::Ratio> rFallBack;
+        rFallBack.push_back(wns::Ratio::from_factor(1));
+        MESSAGE_BEGIN(NORMAL, *logger, m, "CorreltatedStaticZF: ");
+        m << "Correlation makes MIMO impossible -> use only one rx antenna";
+        MESSAGE_END();
+        return rFallBack;
     }
 
     return r;
@@ -196,7 +207,7 @@ CorrelatedStaticZF::getCorrelationLoss(int n, double angle, double spacing, doub
     if(res != 0)
     {
         // factorization not possible
-        return(std::vector<wns::Ratio>(n, wns::Ratio::from_factor(1e-9)));
+        return(std::vector<wns::Ratio>(n, wns::Ratio::from_factor(1e10)));
     }
 
     // create identity matrix of "inverse"
