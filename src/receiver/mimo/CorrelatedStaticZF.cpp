@@ -220,7 +220,7 @@ CorrelatedStaticZF::getCorrelationLoss(int n, double angle, double spacing, doub
 
     for(int i = 0; i< n; ++i)
     {
-        assure(m_inv(i,i).imag() < 1e-10,
+        assure(m_inv(i,i).imag() < 1e-3,
                "Complex value at position " << i << " has imag-part of " << m_inv(i,i).imag());
         r.push_back(wns::Ratio::from_factor(m_inv(i,i).real()));
     }
