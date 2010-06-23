@@ -88,7 +88,7 @@ class OFDMAStationDropIn(OFDMAStation):
         self.numberOfSubCarrier = 1
         self.txPower = "20 dBm"
         self.beamformingAntenna = BFAntenna(4, [0,0,1.5], "linear", 0.0)
-        self.systemManagerName = "OFDMATest"
+        self.systemManagerName = "ofdmatest"
 
 
 class Sender(MobileStation, openwns.node.Component):
@@ -101,7 +101,7 @@ class Sender(MobileStation, openwns.node.Component):
     bandwidth = numberOfSubCarrier * 0.7812 # for which system? TODO: make independent
     txPower = "-0.17 dBm" # Power per subcarrier
     subBand = 52
-    systemManagerName = "OFDMA"
+    systemManagerName = "ofdma"
 
     def __init__(self, node, name, _transmitter, centerFrequency, parentLogger = None):
         openwns.node.Component.__init__(self, node, name)
@@ -119,7 +119,7 @@ class Scanner(MobileStation, openwns.node.Component):
     # one sub carrier is 781.2 kHz
     # bandwidth is measured in MHz
     bandwidth = numberOfSubCarrier * 0.7812 # for which system? TODO: make independent
-    systemManagerName = "OFDMA"
+    systemManagerName = "ofdma"
 
     rxpProbeName  = None
     sinrProbeName = None

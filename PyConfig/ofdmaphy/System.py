@@ -36,9 +36,9 @@ class System(rise.System.System):
     def __init__(self, scenario = None, wraparoundShiftVectors = []):
         super(System, self).__init__(scenario, wraparoundShiftVectors)
         """ TODO: Description """
-        self.name = "OFDMA"
+        self.name = "ofdma"
 
 class DropIn(System):
     def __init__(self):
         super(DropIn, self).__init__(Scenario())
-        self.name = "OFDMATest"
+        self.name = "ofdmatest"
