@@ -85,6 +85,9 @@ Station::Station(Component* _component, const wns::pyconfig::View& pyConfigView)
     assure(pyConfigView.len("receiver") == 1,
            "Only one receiver supported at the moment!");
 
+    assure(pyConfigView.len("transmitter") == 1,
+           "Only one transmitter supported at the moment!");
+
     this->receiver = new receiver::Receiver(pyConfigView.getView("receiver", 0), this);
     this->transmitter = new Transmitter<Station>(pyConfigView.getView("transmitter", 0), this, getAntenna());
 
