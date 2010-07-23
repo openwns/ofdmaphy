@@ -204,13 +204,13 @@ void TransmitterTest::testGetRxPowerBF()
 	// station 3
 	wns::scheduler::Grouping grouping;
 	wns::scheduler::Group myGroup;
-	myGroup[station2->getNode()] = wns::CandI();
-	myGroup[station3->getNode()] = wns::CandI();
+    myGroup[wns::scheduler::UserID(station2->getNode())] = wns::CandI();
+    myGroup[wns::scheduler::UserID(station3->getNode())] = wns::CandI();
 	grouping.groups.push_back(myGroup);
-	grouping.userGroupNumber[station2->getNode()] = 0;
-	grouping.userGroupNumber[station3->getNode()] = 0;
-	grouping.patterns[station2->getNode()] = pattern2;
-	grouping.patterns[station3->getNode()] = pattern3;
+    grouping.userGroupNumber[wns::scheduler::UserID(station2->getNode())] = 0;
+    grouping.userGroupNumber[wns::scheduler::UserID(station3->getNode())] = 0;
+    grouping.patterns[wns::scheduler::UserID(station2->getNode())] = pattern2;
+    grouping.patterns[wns::scheduler::UserID(station3->getNode())] = pattern3;
 
 	WNS_ASSERT_MAX_REL_ERROR( 0.5 , grouping.shareOfPowerPerStreams(0).get_factor() , 1E-3 );
 	WNS_ASSERT_MAX_REL_ERROR( 0.5 , grouping.shareOfPowerPerStreams(myGroup).get_factor() , 1E-3 );
