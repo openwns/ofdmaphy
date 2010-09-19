@@ -563,12 +563,30 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                 {
                     postProcessingSINRFactor = mimoProcessing->getPostProcessingSINRFactor(t);
                 }
+                // Get Interference + Noise
+                wns::Power ipn = getAveragedInterference(t);
+                wns::Power noise = getNoisePerSubChannel();
+                wns::Ratio iot = ipn / noise;
+
+                wns::Ratio ftFadingGain;
+                if(FTFadingIsActive()) // MUE: We should have a NoFTFading by default returnin 0 dB
+                {
+                    int subChannelIndex = getSubCarrierIndex(t->getPhysicalResource()->getFrequency());
+                    ftFadingGain = getFTFading(sourceNode,subChannelIndex);
+                }
+                else
+                {
+                    ftFadingGain = wns::Ratio::from_dB(0.0);
+                }
+
                 wns::service::phy::power::PowerMeasurementPtr rxPowerMeasurementPtr =
                     wns::SmartPtr<rise::receiver::PowerMeasurement>
                     (new rise::receiver::PowerMeasurement(t,
                                                           sourceNode,
-                                                          getAveragedRxPower(t),
-                                                          getAveragedInterference(t),
+                                                          getAveragedRxPower(t) * ftFadingGain,
+                                                          ipn,
+                                                          iot,
+                                                          ftFadingGain,
                                                           omniAttenuation,
                                                           postProcessingSINRFactor));
                 MESSAGE_SINGLE(NORMAL, logger, "PowerMeasurement="<<*rxPowerMeasurementPtr);
