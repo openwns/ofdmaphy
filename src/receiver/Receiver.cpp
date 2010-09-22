@@ -171,23 +171,7 @@ wns::Ratio
 Receiver::getFullPathLoss(const rise::TransmissionObjectPtr& t, wns::service::phy::ofdma::PatternPtr pattern)
 {
     wns::Ratio pathLoss = getQuasiStaticPathLoss(t,pattern);
-    if (FTFadingIsActive())
-    {
-        double frequency = t->getPhysicalResource()->getFrequency();
-        int subChannelIndex = getSubCarrierIndex(frequency);
-        // ^ can we store this somewhere? Used later for PowerMeasurement
-        //wns::Ratio ftFadingGain = getFTFading(subChannelIndex);
 
-        Station* sourceStation = dynamic_cast<Station*>(t->getTransmitter()->getStation());
-        assure(sourceStation!=NULL,"sourceStation==NULL");
-
-        wns::node::Interface* sourceNode = sourceStation->getNode();
-        assure(sourceNode!=NULL,"sourceNode==NULL");
-
-        wns::Ratio ftFadingGain = getFTFading(sourceNode,subChannelIndex);
-        MESSAGE_SINGLE(VERBOSE,logger, "  FTFading: " << ftFadingGain);
-        pathLoss -= ftFadingGain;
-    }
     MESSAGE_SINGLE(VERBOSE,logger, "  getFullPathLoss() = " << pathLoss);
     return pathLoss;
 }
