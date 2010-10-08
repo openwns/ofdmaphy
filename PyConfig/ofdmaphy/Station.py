@@ -120,6 +120,10 @@ class Scanner(MobileStation, openwns.node.Component):
     # bandwidth is measured in MHz
     bandwidth = numberOfSubCarrier * 0.7812 # for which system? TODO: make independent
     systemManagerName = "ofdma"
+    
+    # Any BS within this margin from the highest SINR 
+    # could be serving BS. One is picked randomly
+    margin = "0.0 dB"
 
     rxpProbeName  = None
     sinrProbeName = None

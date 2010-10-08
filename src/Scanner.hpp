@@ -72,14 +72,19 @@ namespace ofdmaphy {
 			void
 			initProbes(const wns::pyconfig::View&);
 
+			void
+			setMargin(wns::Ratio margin);
+
 			int
 			getBSID();
 		private:
 			Scanner* scanner;
 
+            wns::Ratio margin;
+
 			TOList transmissions;
 
-			int bsID;
+			int bsID;            
 
 			wns::probe::bus::ContextCollectorPtr rxpContextCollector;
 			wns::probe::bus::ContextCollectorPtr sinrContextCollector;

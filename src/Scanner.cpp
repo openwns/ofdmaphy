@@ -35,6 +35,7 @@
 #include <WNS/node/component/Component.hpp>
 #include <WNS/probe/bus/ContextProvider.hpp>
 #include <WNS/probe/bus/ContextProviderCollection.hpp>
+#include <WNS/distribution/DiscreteUniform.hpp>
 
 #include <boost/bind.hpp>
 
@@ -50,7 +51,8 @@ STATIC_FACTORY_REGISTER_WITH_CREATOR(
 Scanner::Receiver::Receiver(const wns::pyconfig::View& config, Scanner* s) :
     ofdmaphy::receiver::Receiver(config, s),
 	scanner(s),
-	bsID(0)
+	bsID(0),
+    margin(wns::Ratio::from_dB(-250.0))
 {
 }
 
@@ -71,12 +73,20 @@ Scanner::Receiver::positionChanged()
 {
     ofdmaphy::receiver::Receiver::positionChanged();
 
+    if(transmissions.empty())
+        return;
+
     wns::Position currentPosition = getStation()->getAntenna()->getPosition();
 
+    assure(margin >= wns::Ratio::from_dB(0.0), "Margin must be >= 0 dB");
+
+    wns::Ratio nullMargin = wns::Ratio::from_dB(0);
     wns::Ratio maxSINR = wns::Ratio::from_dB(-250);
     wns::Power maxRxPwr = wns::Power::from_dBm(-250);
     wns::Ratio minPathloss = wns::Ratio::from_dB(300);
     double assocdistance = 0.0;
+
+    std::multimap<wns::Ratio, rise::TransmissionObjectPtr> sinrSortedTransmissions;                                    
 
 	for (TOList::const_iterator itr = transmissions.begin();
 		 itr != transmissions.end();
@@ -94,6 +104,9 @@ Scanner::Receiver::positionChanged()
         wns::Ratio pathloss = this->getQuasiStaticPathLoss((*itr), wns::service::phy::ofdma::PatternPtr());
         pathloss += wns::Ratio::from_dB(2.0);
 
+        if(margin > nullMargin)
+            sinrSortedTransmissions.insert(std::pair<wns::Ratio, rise::TransmissionObjectPtr>(sinr, *itr));
+
         maxSINR = std::max(maxSINR, sinr);
         maxRxPwr = std::max(maxRxPwr, rxp);
         if (pathloss < minPathloss)
@@ -102,16 +115,15 @@ Scanner::Receiver::positionChanged()
             assocdistance = distance;
         }
 
+		bsID = transmitter->getStation()->getStationId();
+
+		MESSAGE_BEGIN(NORMAL, logger, m, "Measured ");
 
 		std::string msName = scanner->getMyNode()->getName();
-
-		bsID = transmitter->getStation()->getStationId();
 		std::string bsName = transmitter->getStation()->getMyNode()->getName();
 
-		MESSAGE_SINGLE(VERBOSE, logger, msName << " set bsIDprovider to " << bsID << " for Probe putting");
-
-		MESSAGE_BEGIN(NORMAL, logger, m, "Measured " << bsName << "(bsId=" << bsID << ") by " << msName << "(msId=" << scanner->getStationId() << "):\n");
-		m << "TxPower: " << txp.get_dBm() << "\n"
+        m << bsName << "(bsId=" << bsID << ") by " << msName << "(msId=" << scanner->getStationId() << "):\n"
+		  << "TxPower: " << txp.get_dBm() << "\n"
 		  << "RxPower: " << rxp.get_dBm() << "\n"
 		  << "Interference+Noise: " << interf.get_dBm() << "\n"
 		  << "SINR:" << sinr.get_dB() << "\n";
@@ -122,10 +134,50 @@ Scanner::Receiver::positionChanged()
         pathlossContextCollector->put(-1 * pathloss.get_dB());
 	}
 
-    maxRxpContextCollector->put(maxRxPwr.get_dBm());
-    maxSINRContextCollector->put(maxSINR.get_dB());
-    minPathlossContextCollector->put(-1 * minPathloss.get_dB());
-    distanceContextCollector->put(assocdistance);
+    if(margin > nullMargin)
+    {
+        wns::Ratio marginSINR = maxSINR - margin;
+
+        std::multimap<wns::Ratio, rise::TransmissionObjectPtr>::iterator it_bound;
+
+        it_bound = sinrSortedTransmissions.lower_bound(marginSINR);
+        assure(it_bound != sinrSortedTransmissions.end(), "Maximum SINR not in sorted SINR container");
+        
+        std::vector<rise::TransmissionObjectPtr> candidates;
+        
+        std::multimap<wns::Ratio, rise::TransmissionObjectPtr>::iterator it;
+        for(it = it_bound; it != sinrSortedTransmissions.end(); it++)
+            candidates.push_back(it->second);
+
+        wns::distribution::DiscreteUniform rng(0, candidates.size() - 1);
+        rise::TransmissionObjectPtr serving =  candidates[rng()];
+
+		wns::Power rxp    = this->getRxPower(serving);
+		wns::Power interf = this->getInterference(serving);
+		wns::Ratio sinr   = rxp / interf;
+
+        maxRxpContextCollector->put(rxp.get_dBm());
+        maxSINRContextCollector->put(sinr.get_dB());
+        minPathlossContextCollector->put(-1 * this->getQuasiStaticPathLoss((serving), 
+            wns::service::phy::ofdma::PatternPtr()).get_dB());
+
+		Transmitter<Sender>* transmitter = 
+			dynamic_cast<Transmitter<Sender>*>((serving)->getTransmitter());
+        wns::Position bsPosition = transmitter->getAntenna()->getPosition();
+        distanceContextCollector->put((bsPosition - currentPosition).abs());
+
+		MESSAGE_BEGIN(NORMAL, logger, m, "Selected " << transmitter->getStation()->getMyNode()->getName());
+		m << "Number of candidates: " << candidates.size() << "\n"
+		  << "SINR:" << sinr.get_dB() << "\n";
+		MESSAGE_END();
+    }
+    else
+    {
+        maxRxpContextCollector->put(maxRxPwr.get_dBm());
+        maxSINRContextCollector->put(maxSINR.get_dB());
+        minPathlossContextCollector->put(-1 * minPathloss.get_dB());
+        distanceContextCollector->put(assocdistance);
+    }
 }
 
 wns::Power
@@ -180,6 +232,12 @@ Scanner::Receiver::initProbes(const wns::pyconfig::View& config)
                                               config.get<std::string>("distanceProbeName")));
 }
 
+void Scanner::Receiver::setMargin(wns::Ratio m)
+{
+    margin = m;
+    assure(margin >= wns::Ratio::from_dB(0.0), "Margin must be >= 0 dB");
+}
+
 int
 Scanner::Receiver::getBSID()
 {
@@ -205,6 +263,7 @@ Scanner::doStartup()
 	systemManager->addStation(this);
 	this->receiver = new Receiver(pyConfigView.getView("receiver", 0), this);
 	this->receiver->initProbes(pyConfigView);
+	this->receiver->setMargin(pyConfigView.get<wns::Ratio>("margin"));
 
 	double rxFrequency = pyConfigView.get<double>("rxFrequency");
 	double bandwidth = pyConfigView.get<double>("bandwidth");
