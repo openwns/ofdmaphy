@@ -563,6 +563,10 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                     ftFadingGain = wns::Ratio::from_dB(0.0);
                 }
 
+                wns::geometry::Point him = t->getTransmitter()->getStation()->getAntenna()->getPosition();
+                wns::geometry::Point me = getStation()->getAntenna()->getPosition();
+                double distance = (him - me).getR();
+
                 wns::service::phy::power::PowerMeasurementPtr rxPowerMeasurementPtr =
                     wns::SmartPtr<rise::receiver::PowerMeasurement>
                     (new rise::receiver::PowerMeasurement(t,
@@ -572,6 +576,7 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                                                           iot,
                                                           ftFadingGain,
                                                           omniAttenuation,
+                                                          distance,
                                                           postProcessingSINRFactor));
                 MESSAGE_SINGLE(NORMAL, logger, "PowerMeasurement="<<*rxPowerMeasurementPtr);
 
