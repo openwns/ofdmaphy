@@ -155,6 +155,8 @@ Receiver::getQuasiStaticPathLoss(const rise::TransmissionObjectPtr& t, wns::serv
         Station* receiverOFDMAStation = dynamic_cast<Station*>(getStation());
         assure(receiverOFDMAStation!=NULL, "station is not an OFDMA station (and may have no beamforming antenna)");
         receiverAntennaGain = receiverOFDMAStation->getBFAntenna()->getGain(transmitter->getAntenna()->getPosition(), pattern);
+          // superposition of sector and beamfomning pattern
+        receiverAntennaGain +=  getStation()->getAntenna()->getGain(transmitter->getAntenna()->getPosition(), wns::service::phy::ofdma::PatternPtr());
         MESSAGE_SINGLE(VERBOSE,logger, "  ReceiverAntennaGain of Beamformed Pattern: " << receiverAntennaGain);
     }
     // TODO: receiverOFDMAStation->getBFAntenna()->getGain() should deliver the same as
