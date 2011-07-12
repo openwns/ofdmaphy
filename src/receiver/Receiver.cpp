@@ -371,7 +371,8 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
 
 void
 Receiver::insertReceivePattern(wns::node::Interface* node, wns::service::phy::ofdma::PatternPtr pattern)
-{
+{ 
+    MESSAGE_SINGLE(VERBOSE, logger, "Receiver::insertReceivePattern for node: "<< node->getName());
     currentReceivePatterns[node] = pattern;
 }
 
@@ -384,7 +385,8 @@ Receiver::removeReceivePattern(wns::node::Interface* node)
 void
 Receiver::setCurrentReceivePatterns(std::map<wns::node::Interface*, wns::service::phy::ofdma::PatternPtr> _currentReceivePatterns)
 {
-    // old patterns are no longer valid
+    // old patterns are no longer valid 
+    MESSAGE_SINGLE(VERBOSE, logger, "Receiver::setCurrentReceivePatterns");
     currentReceivePatterns = _currentReceivePatterns;
 }
 
@@ -545,7 +547,7 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
 
                 std::vector<wns::Ratio> postProcessingSINRFactor(1, wns::Ratio::from_factor(1.0));
                 // minimize calculation if MIMO is not used at all
-                if(ofdmaStation->getNumAntennas() > 1 or t->getNumberOfSpatialStreams() > 1)
+                if(!ofdmaStation->beamformingEnabled() && (ofdmaStation->getNumAntennas() > 1 || t->getNumberOfSpatialStreams() > 1))
                 {
                     postProcessingSINRFactor = mimoProcessing->getPostProcessingSINRFactor(t);
                 }
