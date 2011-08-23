@@ -28,6 +28,8 @@
 #include <OFDMAPHY/Component.hpp>
 #include <OFDMAPHY/Station.hpp>
 #include <OFDMAPHY/Manager.hpp>
+#include <OFDMAPHY/receiver/Receiver.hpp>
+#include <RISE/scenario/Propagation.hpp>
 
 using namespace ofdmaphy;
 
@@ -93,6 +95,7 @@ void
 Component::onWorldCreated()
 {
 	dynamic_cast<ofdmaphy::SystemManager*>(station->getSystemManager())->initAntennas(station);
+    station->getReceiver()->initPropagation();
 }
 
 void

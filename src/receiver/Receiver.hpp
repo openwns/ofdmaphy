@@ -56,7 +56,7 @@ namespace ofdmaphy { namespace receiver {
         public FTFadingAspect,
         public MeasurementAspect,
         public rise::receiver::TimeWeightedTransmissionAveraging,
-        protected rise::receiver::LossCalculation,
+        public rise::receiver::LossCalculation,
         public wns::Subject<RSSInterface>
     {
 
