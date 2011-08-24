@@ -51,7 +51,8 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
     propagationCache(new rise::IdVectorCache(this)),
     activeTransmissions(),
     wraparoundShiftVectors(NULL),
-    nSectors(config.get<int>("nSectors"))
+    nSectors(config.get<int>("nSectors")),
+    fastFadeInterference(config.get<bool>("fastFadeInterference"))
 {
     activeTransmissions.clear();
     this->startObserving(s);
@@ -99,6 +100,8 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
         config.get<std::string>("mimoProcessing.__plugin__"))->create(config.getView("mimoProcessing"),
                                                                       this,
                                                                       &logger);
+
+    s->setReceiverType(getPropagationCharacteristicId());
 }
 
 Receiver::~Receiver()
@@ -290,7 +293,13 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
         {
             if (nSectors == 1)
             {
-                interference += getRxPower(*itr, currentPattern);
+                wns::Power iPower = getRxPower(*itr, currentPattern);
+                if(fastFadeInterference)
+                {
+                    iPower += getFastFading(*(*itr)->getTransmitter(), 
+                        (*itr)->getPhysicalResource()->getFrequency());
+                }
+                interference += iPower;
             }
             else if (nSectors == 3)
             {
@@ -556,16 +565,9 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                 wns::Power noise = getNoisePerSubChannel();
                 wns::Ratio iot = ipn / noise;
 
-                wns::Ratio ftFadingGain;
-                if(FTFadingIsActive()) // MUE: We should have a NoFTFading by default returnin 0 dB
-                {
-                    int subChannelIndex = getSubCarrierIndex(t->getPhysicalResource()->getFrequency());
-                    ftFadingGain = getFTFading(sourceNode,subChannelIndex);
-                }
-                else
-                {
-                    ftFadingGain = wns::Ratio::from_dB(0.0);
-                }
+                wns::Ratio fastFadingGain;
+
+                fastFadingGain = getFastFading(*t->getTransmitter(), t->getPhysicalResource()->getFrequency());
 
                 wns::geometry::Point him = t->getTransmitter()->getStation()->getAntenna()->getPosition();
                 wns::geometry::Point me = getStation()->getAntenna()->getPosition();
@@ -575,10 +577,10 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
                     wns::SmartPtr<rise::receiver::PowerMeasurement>
                     (new rise::receiver::PowerMeasurement(t,
                                                           sourceNode,
-                                                          getAveragedRxPower(t) * ftFadingGain,
+                                                          getAveragedRxPower(t) * fastFadingGain,
                                                           ipn,
                                                           iot,
-                                                          ftFadingGain,
+                                                          fastFadingGain,
                                                           omniAttenuation,
                                                           distance,
                                                           postProcessingSINRFactor));

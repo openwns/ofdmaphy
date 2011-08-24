@@ -207,6 +207,8 @@ namespace ofdmaphy { namespace receiver {
         int nSectors;
 
         mimo::ICalculationStrategy* mimoProcessing;
+
+        bool fastFadeInterference;
     };
 }
 }

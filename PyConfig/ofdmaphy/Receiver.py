@@ -53,6 +53,7 @@ class OFDMAReceiver(Receiver):
         self.measurementUpdateOffset = 0.0
 
         self.mimoProcessing = NoCorrelationZF()
+        self.fastFadeInterference = True
 
         attrsetter(self, kw)
 
