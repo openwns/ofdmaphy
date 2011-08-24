@@ -297,7 +297,8 @@ wns::Power Receiver::getInterference(const rise::TransmissionObjectPtr& t)
                 if(fastFadeInterference)
                 {
                     iPower += getFastFading(*(*itr)->getTransmitter(), 
-                        (*itr)->getPhysicalResource()->getFrequency());
+                        (*itr)->getPhysicalResource()->getFrequency(),
+                        *(t->getTransmitter()));
                 }
                 interference += iPower;
             }
@@ -567,7 +568,9 @@ void Receiver::notify(rise::TransmissionObjectPtr t)
 
                 wns::Ratio fastFadingGain;
 
-                fastFadingGain = getFastFading(*t->getTransmitter(), t->getPhysicalResource()->getFrequency());
+                fastFadingGain = getFastFading(*t->getTransmitter(), 
+                    t->getPhysicalResource()->getFrequency(),
+                    *t->getTransmitter());
 
                 wns::geometry::Point him = t->getTransmitter()->getStation()->getAntenna()->getPosition();
                 wns::geometry::Point me = getStation()->getAntenna()->getPosition();
