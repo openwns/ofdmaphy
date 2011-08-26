@@ -24,13 +24,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-// #include <OFDMAPHY/OFDMAMeasurement.hpp>
 
 #ifndef WNS_OFDMAPHY_MEASUREMENT_HPP
 #define WNS_OFDMAPHY_MEASUREMENT_HPP
 
 #include <WNS/service/phy/power/OFDMAMeasurement.hpp>
-#include <RISE/scenario/ftfading/FTFading.hpp>
+#include <WNS/logger/Logger.hpp>
 
 
 namespace ofdmaphy {
@@ -48,7 +47,6 @@ namespace ofdmaphy {
 						 int _numberOfSubChannels,
 						 simTimeType _timeOfValidity,
 						 wns::Ratio _quasiStaticPathLoss,
-						 rise::scenario::ftfading::FTFading* _ftfading,
 						 std::vector<wns::Power> _interferenceVector,
 						 wns::logger::Logger& _logger
 						 );
@@ -87,7 +85,6 @@ namespace ofdmaphy {
 		simTimeType timestamp;
 		simTimeType timeOfValidity;
 		wns::Ratio  quasiStaticPathLoss;
-		rise::scenario::ftfading::FTFading* ftfading;
 		std::vector<wns::Power> interferencePlusNoise;
 		wns::logger::Logger& logger; // same logger as OFDMA
 	};

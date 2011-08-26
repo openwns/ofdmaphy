@@ -30,7 +30,6 @@
 
 #include <OFDMAPHY/receiver/ReceiverBase.hpp>
 #include <OFDMAPHY/receiver/OFDMAAspect.hpp>
-#include <OFDMAPHY/receiver/FTFadingAspect.hpp>
 #include <OFDMAPHY/receiver/MeasurementAspect.hpp>
 
 #include <OFDMAPHY/receiver/mimo/ICalculationStrategy.hpp>
@@ -53,7 +52,6 @@ namespace ofdmaphy { namespace receiver {
     class Receiver :
         virtual public ReceiverBase,
         public OFDMAAspect,
-        public FTFadingAspect,
         public MeasurementAspect,
         public rise::receiver::TimeWeightedTransmissionAveraging,
         public rise::receiver::LossCalculation,

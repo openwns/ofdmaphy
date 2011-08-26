@@ -44,7 +44,6 @@ using namespace ofdmaphy::receiver;
 Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
     ReceiverBase(config),
     OFDMAAspect(config.get<wns::Ratio>("receiverNoiseFigure")),
-    FTFadingAspect(config),
     MeasurementAspect(config),
     LossCalculation(config),
     station(s),
@@ -59,21 +58,6 @@ Receiver::Receiver(const wns::pyconfig::View& config, rise::Station* s) :
 
     if (measurementUpdatesAreOn())
     {
-        // can also be done if ftfading == NULL
-        if ((getMeasurementUpdateInterval()==0.0) && (ftfading))
-        {
-            setMeasurementUpdateInterval(ftfading->getSamplingTime());
-        }
-        else if (FTFadingIsActive())
-        {
-            assure(getMeasurementUpdateInterval() == ftfading->getSamplingTime(),
-                   "measurementUpdateInterval="<<getMeasurementUpdateInterval()<<" != ftfading::samplingTime="<<ftfading->getSamplingTime());
-        }
-        else
-        {
-
-        }
-
         assure(getMeasurementUpdateInterval()>0.0,
                "doMeasurementUpdates=True but measurementUpdateInterval=0");
 
@@ -108,12 +92,6 @@ Receiver::~Receiver()
 {
     delete propagationCache;
     activeTransmissions.clear();
-    // cleanup FTfading object:
-    if (ftfading)
-    {
-        delete ftfading;
-        ftfading=NULL;
-    }
 }
 
 // this overloads a method from rise::Receiver
@@ -216,12 +194,6 @@ Receiver::getUnfilteredRxPower(const rise::TransmissionObjectPtr& t)
 
     rxPower -= getLoss(t->getTransmitter(), t->getPhysicalResource()->getFrequency());
     rxPower += t->getTransmittersAntennaGain(getStation()->getAntenna()->getPosition());
-
-    if (ftfading)
-    {
-        int subBandIndex = getSubCarrierIndex(t->getPhysicalResource()->getFrequency());
-        rxPower += getFTFading(subBandIndex); // TODO: adapt
-    }
 
     MESSAGE_BEGIN(VERBOSE, logger, m , "Unfiltered RxPower: ");
     m << rxPower << " (i.e. without receiver Antenna Gain)";
@@ -690,7 +662,6 @@ Receiver::doMeasurementsNow()
 
         PerSourceContainer& perSourceContainer = perSourceIterator->second;
         wns::Ratio quasiStaticPathLoss = perSourceContainer.quasiStaticPathLoss;
-        rise::scenario::ftfading::FTFading* ftfading = perSourceContainer.ftfading;
 
         assure((int)perSourceContainer.interferenceVector.size()==numberOfSubChannels,
                "wrong interferenceVector.size="<<perSourceContainer.interferenceVector.size());
@@ -702,7 +673,6 @@ Receiver::doMeasurementsNow()
                                             numberOfSubChannels,
                                             measurementUpdateInterval,
                                             quasiStaticPathLoss,
-                                            ftfading,
                                             perSourceContainer.interferenceVector, // big copy
                                             logger));
 

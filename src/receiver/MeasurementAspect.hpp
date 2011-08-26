@@ -39,8 +39,6 @@
 
 namespace ofdmaphy { namespace receiver {
 
-    class FTFadingAspect;
-
     /**
 	 * @brief implements the Measurement Aspect of a MultiCarrier receiver
 	 */
@@ -48,8 +46,6 @@ namespace ofdmaphy { namespace receiver {
         virtual public ReceiverBase,
         protected wns::events::CanTimeout // regular intervals
     {
-        friend class FTFadingAspect;
-
     public:
         MeasurementAspect(const wns::pyconfig::View& config);
         virtual ~MeasurementAspect();

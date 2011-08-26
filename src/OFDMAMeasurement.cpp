@@ -27,7 +27,6 @@
 
 #include <OFDMAPHY/OFDMAMeasurement.hpp>
 #include <WNS/events/scheduler/Interface.hpp>
-#include <RISE/scenario/ftfading/FTFading.hpp>
 #include <fstream>
 #include <iomanip>
 
@@ -37,7 +36,6 @@ OFDMAMeasurement::OFDMAMeasurement(wns::node::Interface* _source,
 								   int _numberOfSubChannels,
 								   simTimeType _timeOfValidity,
 								   wns::Ratio _quasiStaticPathLoss,
-								   rise::scenario::ftfading::FTFading* _ftfading,
 								   std::vector<wns::Power> _interferenceVector,
 								   wns::logger::Logger& _logger
 	) :
@@ -45,16 +43,13 @@ OFDMAMeasurement::OFDMAMeasurement(wns::node::Interface* _source,
 	numberOfSubChannels(_numberOfSubChannels),
 	timeOfValidity(_timeOfValidity),
 	quasiStaticPathLoss(_quasiStaticPathLoss),
-	ftfading(_ftfading),
 	logger(_logger)
 {
 	assure(source!=NULL,"source==NULL");
 	assure(numberOfSubChannels>0,"wrong numberOfSubChannels="<<numberOfSubChannels);
 	assure(timeOfValidity > 0.0,"OFDMAMeasurement is valid too shortly ("<<timeOfValidity<<"s)");
-	//assure(ftfading!=NULL,"ftfading==NULL"); // ftfading==NULL means no fading (0dB)
+
 	timestamp = wns::simulator::getEventScheduler()->getTime();
-	//wns::Power interferenceTemplate = wns::Power::from_mW(0.0); // from_dBm()
- 	//interferencePlusNoise = std::vector<wns::Power>(numberOfSubChannels,interferenceTemplate);
 	interferencePlusNoise = _interferenceVector; // big copy
 }
 
@@ -68,16 +63,7 @@ OFDMAMeasurement::getPathLoss(int subChannel) const
 	assure(subChannel>=0,"invalid subChannel="<<subChannel);
 	assure(subChannel<numberOfSubChannels,"invalid subChannel="<<subChannel);
 	wns::Ratio pathLoss = quasiStaticPathLoss;
-	if (ftfading) {
-		wns::Ratio ftfadingValue = ftfading->getFTFading(subChannel);
-		pathLoss -= ftfadingValue;
-		MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"):"
-					   <<" spl="<<quasiStaticPathLoss
-					   <<", ftf="<<ftfadingValue
-					   <<", pathLoss="<<pathLoss);
-	} else {
-		MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"): pathLoss="<<pathLoss);
-	}
+    MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"): pathLoss="<<pathLoss);
 	return pathLoss;
 }
 
@@ -92,33 +78,14 @@ OFDMAMeasurement::getPathLoss() const
 {
 	// make a local object that is _copied_ to the caller:
 	std::vector<wns::Ratio> pathLossVector; // temporary object
-	if (ftfading)
-		assure(numberOfSubChannels==ftfading->getNumberOfSubChannels(),"mismatch of numberOfSubChannels");
-	for(int subChannel=0; subChannel<numberOfSubChannels; ++subChannel) {
+	for(int subChannel=0; subChannel<numberOfSubChannels; ++subChannel) 
+    {
 		wns::Ratio pathLoss = quasiStaticPathLoss;
-		if (ftfading) {
-			wns::Ratio ftfadingValue = ftfading->getFTFading(subChannel);
-			pathLoss -= ftfadingValue;
-			MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"):"
-						   << std::setiosflags(std::ios::dec)
-						   << std::resetiosflags(std::ios::scientific)
-						   << std::setprecision(2)
-						   <<" spl="<<quasiStaticPathLoss
-						   <<", ftf="<<ftfadingValue
-						   <<", pathLoss="<<pathLoss);
-		} else {
-			MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"): pathLoss="<<pathLoss);
-		}
+        MESSAGE_SINGLE(NORMAL, logger, "OFDMAMeasurement::getPathLoss(subChannel="<<subChannel<<"): pathLoss="<<pathLoss);
 		pathLossVector.push_back(pathLoss);
 	}
 	return pathLossVector; // copy back
 }
-
-//const std::vector<wns::Ratio> OFDMAMeasurement::getPathLossInFuture(int samplingTimeOffset) const
-//{
-//	assure(samplingTimeOffset>=0,"invalid samplingTimeOffset="<<samplingTimeOffset);
-//	assure(samplingTimeOffset<=1,"invalid samplingTimeOffset="<<samplingTimeOffset);
-//}
 
 const wns::Power
 OFDMAMeasurement::getInterferencePlusNoise(int subChannel) const
@@ -159,13 +126,9 @@ OFDMAMeasurement::getString() const
 	s.setf(std::ios::dec);
 	s.unsetf(std::ios::scientific);
 	s.precision(2);
-	for(int subChannel=0; subChannel<numberOfSubChannels; ++subChannel) {
-		//wns::Ratio pathLoss = getPathLoss(subChannel); // short way but verbose
+	for(int subChannel=0; subChannel<numberOfSubChannels; ++subChannel) 
+    {
 		wns::Ratio pathLoss = quasiStaticPathLoss;
-		if (ftfading) {
-			wns::Ratio ftfadingValue = ftfading->getFTFading(subChannel);
-			pathLoss -= ftfadingValue;
-		}
 		s<<pathLoss<<" ";
 	}
 	return s.str();

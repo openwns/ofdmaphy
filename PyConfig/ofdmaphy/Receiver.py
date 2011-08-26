@@ -31,8 +31,6 @@ from rise.Receiver import Receiver
 from rise.scenario.Propagation import DropInPropagation
 import rise.Scenario
 
-from rise.scenario.FTFading import FTFadingOff
-
 from math import pi
 from random import gauss, uniform
 
@@ -40,7 +38,7 @@ from random import gauss, uniform
 class OFDMAReceiver(Receiver):
     carrierSensing = None
     doMeasurementUpdates = False
-    measurementUpdateInterval = None # if unspecified it will be taken from FTFading::samplingTime
+    measurementUpdateInterval = None 
     measurementUpdateOffset = None
     wraparoundShiftVectors = None # None or empty list means wraparound off
 
@@ -65,7 +63,9 @@ class OFDMAReceiver(Receiver):
 class ReceiverDropIn(OFDMAReceiver):
 
     def __init__(self, parentLogger = None):
-        super(ReceiverDropIn, self).__init__(DropInPropagation.getInstance(), "DropIn", receiverNoiseFigure = "0 dB", FTFadingStrategy = FTFadingOff(), parentLogger=parentLogger)
+        super(ReceiverDropIn, self).__init__(DropInPropagation.getInstance(), "DropIn", 
+            receiverNoiseFigure = "0 dB", parentLogger=parentLogger)
+
         self.logger = Logger("OFDMAPhy", "PHY.ReceiverDropIn", True, parentLogger)
 
 class NoCorrelationZF:

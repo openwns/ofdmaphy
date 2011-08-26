@@ -72,7 +72,7 @@ namespace ofdmaphy { namespace receiver {
         wns::Ratio
         getNoiseFigure() const;
 
-        /** @brief translate frequency to subcarrier (required for FTFading) */
+        /** @brief translate frequency to subcarrier */
         virtual int
         getSubCarrierIndex(double f);
 

@@ -28,8 +28,6 @@
 #ifndef OFDMAPHY_RECEIVER_RECEIVERBASE_HPP
 #define OFDMAPHY_RECEIVER_RECEIVERBASE_HPP
 
-#include <RISE/scenario/ftfading/FTFading.hpp>
-
 #include <WNS/node/Interface.hpp>
 #include <WNS/PowerRatio.hpp>
 #include <WNS/logger/Logger.hpp>
@@ -40,7 +38,6 @@
 namespace ofdmaphy { namespace receiver {
     struct PerSourceContainer {
         int packetCount;
-        rise::scenario::ftfading::FTFading* ftfading;
         wns::Ratio quasiStaticPathLoss;
         std::vector<wns::Power> interferenceVector;
     };
@@ -71,7 +68,7 @@ namespace ofdmaphy { namespace receiver {
 
         /**
          * @brief information element for measurements and fading maps from the
-         * source to its measured pathloss,ftfading
+         * source to its measured pathloss
          */
         typedef std::map<wns::node::Interface*, PerSourceContainer> PerSourceMap;
 

@@ -44,7 +44,6 @@ MeasurementAspect::MeasurementAspect(const wns::pyconfig::View& config) :
 
     if (doMeasurementUpdates)
     {
-        // can also be done if ftfading == NULL
         if (!config.isNone("measurementUpdateInterval")) 
         {
             measurementUpdateInterval = config.get<simTimeType>("measurementUpdateInterval");
@@ -111,7 +110,6 @@ MeasurementAspect::registerSource(wns::node::Interface* source)
 
         PerSourceContainer myPerSourceContainer;
         myPerSourceContainer.packetCount = 0;
-        myPerSourceContainer.ftfading = NULL;
         myPerSourceContainer.quasiStaticPathLoss = wns::Ratio::from_dB(0.0);
         wns::Power interferenceTemplate = getNoisePerSubChannel();
         myPerSourceContainer.interferenceVector = std::vector<wns::Power>(numberOfSubChannels,interferenceTemplate);
